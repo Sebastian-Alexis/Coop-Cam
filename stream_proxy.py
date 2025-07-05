@@ -5,7 +5,7 @@ import aiohttp
 from aiohttp import web
 import weakref
 
-DROIDCAM_URL = "http://192.168.1.49:4747/video"
+DROIDCAM_URL = "http://192.168.1.147:4747/video"
 
 class StreamProxy:
     def __init__(self):
