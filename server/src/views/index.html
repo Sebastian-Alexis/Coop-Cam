@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="caramellatte">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coop Cam</title>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom caramellatte theme */
+    [data-theme="caramellatte"] {
+      color-scheme: light;
+      --b1: 98% 0.016 73.684;
+      --b2: 95% 0.038 75.164;
+      --b3: 90% 0.076 70.697;
+      --bc: 40% 0.123 38.172;
+      --p: 0% 0 0;
+      --pc: 100% 0 0;
+      --s: 22.45% 0.075 37.85;
+      --sc: 90% 0.076 70.697;
+      --a: 46.44% 0.111 37.85;
+      --ac: 90% 0.076 70.697;
+      --n: 55% 0.195 38.402;
+      --nc: 98% 0.016 73.684;
+      --in: 42% 0.199 265.638;
+      --inc: 90% 0.076 70.697;
+      --su: 43% 0.095 166.913;
+      --suc: 90% 0.076 70.697;
+      --wa: 82% 0.189 84.429;
+      --wac: 41% 0.112 45.904;
+      --er: 70% 0.191 22.216;
+      --erc: 39% 0.141 25.723;
+      --rounded-box: 1rem;
+      --rounded-btn: 0.5rem;
+      --rounded-badge: 2rem;
+      --animation-btn: 0.25s;
+      --animation-input: 0.2s;
+      --btn-focus-scale: 0.95;
+      --border-btn: 2px;
+      --tab-border: 2px;
+      --tab-radius: 0.5rem;
+    }
+    
+    .handwritten {
+      font-family: 'Segoe Script', 'Bradley Hand ITC', cursive;
+      font-size: 4rem;
+      transform: rotate(-2deg);
+    }
+  </style>
+</head>
+<body>
+  <div class="min-h-screen bg-base-100 flex flex-col items-center justify-center p-8">
+    <div class="max-w-4xl w-full text-center">
+      <!-- Handwritten Title -->
+      <h1 class="handwritten mb-12">Coop Cam</h1>
+      
+      <!-- Description -->
+      <p class="text-xl mb-12 max-w-3xl mx-auto">
+        Coop Cam is an open source chicken coop monitoring tool created by Sebastian Alexis. 
+        It is designed to be as cheap as possible while still providing you with the best 
+        possible monitoring experience.
+      </p>
+      
+      <!-- Links -->
+      <div class="flex justify-between max-w-2xl mx-auto mb-16">
+        <a href="https://github.com/Sebastian-Alexis/Coop-Cam" class="link link-hover text-lg">Github</a>
+        <a href="https://summer.hackclub.com/projects/5364" class="link link-hover text-lg">Devlogs</a>
+      </div>
+      
+      <!-- Buttons -->
+      <div class="space-y-6">
+        <div>
+          <a href="/coop" class="btn btn-outline btn-lg">Visit My Coop!</a>
+        </div>
+        <div>
+          <a href="/chickens" class="btn btn-outline btn-lg">Learn About My Chickens!</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
