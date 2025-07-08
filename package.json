@@ -10,12 +10,27 @@
     "build:client": "cd client && npm run build",
     "build:server": "cd server && npm run build",
     "start": "cd server && npm start",
-    "install:all": "npm install && cd server && npm install && cd ../client && npm install"
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:all": "npm run test:server && npm run test:client",
+    "test:server": "cd server && npm test",
+    "test:client": "cd client && npm test"
   },
-  "keywords": ["droidcam", "mjpeg", "streaming", "proxy"],
+  "keywords": [
+    "droidcam",
+    "mjpeg",
+    "streaming",
+    "proxy"
+  ],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "concurrently": "^7.6.0"
+    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/ui": "^3.2.4",
+    "concurrently": "^7.6.0",
+    "happy-dom": "^18.0.1",
+    "vitest": "^3.2.4"
   }
 }

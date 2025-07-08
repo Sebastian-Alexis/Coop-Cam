@@ -13,6 +13,10 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // Middleware
+
+
+
+
 app.use(morgan('dev'));
 app.use(cors({
   origin: config.CORS_ORIGIN,
@@ -108,3 +112,6 @@ process.on('SIGINT', () => {
   console.log('\n[Server] Shutting down gracefully...');
   process.exit(0);
 });
+
+// Export for testing
+export { app, mjpegProxy };

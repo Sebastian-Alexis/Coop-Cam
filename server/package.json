@@ -7,7 +7,10 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "start:prod": "NODE_ENV=production node src/index.js"
+    "start:prod": "NODE_ENV=production node src/index.js",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage"
   },
   "keywords": [
     "mjpeg",
@@ -23,5 +26,12 @@
     "express": "^4.18.2",
     "morgan": "^1.10.0",
     "vite": "^7.0.2"
+  },
+  "devDependencies": {
+    "@types/supertest": "^6.0.3",
+    "@vitest/ui": "^3.2.4",
+    "msw": "^2.10.3",
+    "supertest": "^7.1.1",
+    "vitest": "^3.2.4"
   }
 }

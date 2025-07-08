@@ -56,7 +56,11 @@ class MjpegProxy extends EventEmitter {
       }
       
       console.log(`[Proxy] Connected to source. Content-Type: ${contentType}`);
+      
       this.emit('connected');
+
+
+
 
       // Handle incoming data
       let buffer = Buffer.alloc(0);
@@ -235,6 +239,8 @@ class MjpegProxy extends EventEmitter {
       hasLastFrame: !!this.lastFrame
     };
   }
+}
+
 }
 
 export default MjpegProxy;
