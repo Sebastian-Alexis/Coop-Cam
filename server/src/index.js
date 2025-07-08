@@ -1,5 +1,4 @@
 import express from 'express';
-import cors from 'cors';
 import morgan from 'morgan';
 import path from 'path';
 import fs from 'fs';
@@ -14,10 +13,7 @@ const app = express();
 
 // Middleware
 app.use(morgan('dev'));
-app.use(cors({
-  origin: config.CORS_ORIGIN,
-  credentials: true
-}));
+
 app.use(express.json());
 
 // Create MJPEG proxy instance
@@ -32,8 +28,12 @@ app.get('/api/stream', (req, res) => {
 });
 
 app.get('/api/stats', (req, res) => {
+  const stats = mjpegProxy.getStats();
   res.json({
-    ...mjpegProxy.getStats(),
+    isConnected: stats.isConnected,
+    clientCount: stats.clientCount,
+    sourceUrl: stats.sourceUrl,
+    hasLastFrame: stats.hasLastFrame,
     serverTime: new Date().toISOString()
   });
 });
@@ -78,7 +78,66 @@ app.put('/api/flashlight', async (req, res) => {
   }
 });
 
-// Serve the HTML interface
+// DroidCam status endpoint for diagnostics
+app.get('/api/droidcam-status', async (req, res) => {
+  try {
+    const stats = mjpegProxy.getStats();
+    const droidcamUrl = `http://${config.DROIDCAM_IP}:${config.DROIDCAM_PORT}`;
+    
+    // Try to check if DroidCam is reachable
+    let droidcamReachable = false;
+    let droidcamError = null;
+    
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      
+      const response = await fetch(`${droidcamUrl}/`, { 
+        signal: controller.signal,
+        method: 'GET'
+      });
+      
+      clearTimeout(timeout);
+      droidcamReachable = response.ok;
+      
+      if (!response.ok) {
+        droidcamError = `HTTP ${response.status}`;
+      }
+    } catch (error) {
+      droidcamError = error.message;
+    }
+    
+    res.json({
+      droidcam: {
+        ip: config.DROIDCAM_IP,
+        port: config.DROIDCAM_PORT,
+        url: droidcamUrl,
+        videoUrl: DROIDCAM_URL,
+        reachable: droidcamReachable,
+        error: droidcamError
+      },
+      proxy: {
+        connected: stats.isConnected,
+        viewerCount: stats.clientCount,
+        clientIds: Array.from(mjpegProxy.clients.keys()),
+        lastFrameTime: mjpegProxy.lastFrameTime || null
+      },
+      server: {
+        uptime: process.uptime(),
+        nodeVersion: process.version,
+        environment: process.env.NODE_ENV || 'development'
+      }
+    });
+  } catch (error) {
+    console.error('[DroidCam Status] Error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get status',
+      message: error.message 
+    });
+  }
+});
+
+// Serve static HTML pages
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'index.html'));
 });
@@ -91,6 +150,17 @@ app.get('/chickens', (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'chickens.html'));
 });
 
+// Catch-all route for undefined paths
+app.get('*', (req, res, next) => {
+  // Skip if it's an API route or a static file
+  if (req.path.startsWith('/api/') || req.path.includes('.')) {
+    return next();
+  }
+  
+  // Return 404 for undefined routes
+  res.status(404).send('Page not found');
+});
+
 // Error handling
 app.use((err, req, res, next) => {
   console.error('Server error:', err);
@@ -99,12 +169,27 @@ app.use((err, req, res, next) => {
 
 // Start server only if not in test environment
 const PORT = config.SERVER_PORT;
-if (process.env.NODE_ENV !== 'test' && import.meta.url === `file://${process.argv[1]}`) {
-  app.listen(PORT, () => {
-    console.log(`[Server] Running on port ${PORT}`);
+const HOST = config.SERVER_HOST;
+
+console.log('[Server] Checking startup conditions...');
+console.log('[Server] NODE_ENV:', process.env.NODE_ENV);
+console.log('[Server] Configured to run on:', `http://${HOST}:${PORT}`);
+
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, HOST, (err) => {
+    if (err) {
+      console.error('[Server] Failed to start:', err);
+      process.exit(1);
+    }
+    console.log(`[Server] Successfully listening on http://${HOST}:${PORT}`);
     console.log(`[Server] DroidCam URL: ${DROIDCAM_URL}`);
-    console.log(`[Server] CORS origin: ${config.CORS_ORIGIN}`);
+    console.log('[Server] Static pages available at:');
+    console.log(`  - http://${HOST}:${PORT}/         (Landing page)`);
+    console.log(`  - http://${HOST}:${PORT}/coop     (Live stream)`);
+    console.log(`  - http://${HOST}:${PORT}/chickens (Information)`);
   });
+} else {
+  console.log('[Server] Skipping server startup in test environment');
 }
 
 // Handle process termination

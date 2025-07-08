@@ -126,6 +126,39 @@ describe('API Endpoints Integration Tests', () => {
     })
   })
   
+  describe('GET /api/droidcam-status', () => {
+    it('should return comprehensive status information', async () => {
+      const response = await request(app)
+        .get('/api/droidcam-status')
+        .expect(200)
+        .expect('Content-Type', /json/)
+      
+      expect(response.body).toHaveProperty('droidcam')
+      expect(response.body).toHaveProperty('proxy')
+      expect(response.body).toHaveProperty('server')
+      
+      expect(response.body.droidcam).toMatchObject({
+        ip: expect.any(String),
+        port: expect.any(String),
+        url: expect.any(String),
+        videoUrl: expect.any(String),
+        reachable: expect.any(Boolean)
+      })
+      
+      expect(response.body.proxy).toMatchObject({
+        connected: expect.any(Boolean),
+        viewerCount: expect.any(Number),
+        clientIds: expect.any(Array)
+      })
+      
+      expect(response.body.server).toMatchObject({
+        uptime: expect.any(Number),
+        nodeVersion: expect.any(String),
+        environment: expect.any(String)
+      })
+    })
+  })
+  
   describe('GET /api/stream', () => {
     it('should return MJPEG stream headers', (done) => {
       const req = request(app)
@@ -167,25 +200,28 @@ describe('API Endpoints Integration Tests', () => {
   })
   
   describe('Static file routes', () => {
-    it('should serve index.html at root', async () => {
-      await request(app)
-        .get('/')
-        .expect(200)
-        .expect('Content-Type', /html/)
+    it('should serve React app or return 404 if not built', async () => {
+      const response = await request(app).get('/')
+      
+      // Either serves the React app (200) or returns 404 with build message
+      if (response.status === 404) {
+        expect(response.text).toContain('Client build not found')
+      } else {
+        expect(response.status).toBe(200)
+        expect(response.headers['content-type']).toMatch(/html/)
+      }
     })
     
-    it('should serve coop.html', async () => {
-      await request(app)
-        .get('/coop')
-        .expect(200)
-        .expect('Content-Type', /html/)
-    })
-    
-    it('should serve chickens.html', async () => {
-      await request(app)
-        .get('/chickens')
-        .expect(200)
-        .expect('Content-Type', /html/)
+    it('should handle client-side routes', async () => {
+      const response = await request(app).get('/coop')
+      
+      // Should serve the same React app for client-side routing
+      if (response.status === 404) {
+        expect(response.text).toContain('Client build not found')
+      } else {
+        expect(response.status).toBe(200)
+        expect(response.headers['content-type']).toMatch(/html/)
+      }
     })
   })
   

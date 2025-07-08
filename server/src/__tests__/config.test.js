@@ -52,30 +52,6 @@ describe('Config', () => {
     expect(DROIDCAM_URL).toBe('http://192.168.0.100:4747/video')
   })
   
-  it('should set CORS_ORIGIN based on NODE_ENV', async () => {
-    //test development mode
-    delete process.env.NODE_ENV
-    delete process.env.FRONTEND_URL
-    
-    let { config } = await import('../config.js')
-    expect(config.CORS_ORIGIN).toBe('http://localhost:5173')
-    
-    //test production mode with FRONTEND_URL
-    vi.resetModules()
-    process.env.NODE_ENV = 'production'
-    process.env.FRONTEND_URL = 'https://myapp.com'
-    
-    const configProd = await import('../config.js')
-    expect(configProd.config.CORS_ORIGIN).toBe('https://myapp.com')
-    
-    //test production mode without FRONTEND_URL
-    vi.resetModules()
-    process.env.NODE_ENV = 'production'
-    delete process.env.FRONTEND_URL
-    
-    const configProdNoUrl = await import('../config.js')
-    expect(configProdNoUrl.config.CORS_ORIGIN).toBeUndefined()
-  })
   
   it('should handle invalid port numbers gracefully', async () => {
     process.env.DROIDCAM_PORT = 'invalid'
