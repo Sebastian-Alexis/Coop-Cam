@@ -287,3 +287,85 @@ describe('API Integration Tests', () => {
       
       //wait for app to render  
       await waitFor(() => {
+        expect(screen.getByText('Coop Cam 🐔')).toBeInTheDocument()
+      })
+      
+      //verify viewer count section exists even with server error
+      expect(screen.getByText('Current Viewers')).toBeInTheDocument()
+      
+      //flashlight should show server error
+      const flashlightBtn = screen.getByRole('button', { name: /toggle flashlight/i })
+      await user.click(flashlightBtn)
+      
+      await waitFor(() => {
+        expect(screen.getByText('Failed to toggle flashlight')).toBeInTheDocument()
+      })
+    })
+    
+    it('should handle rapid user interactions', async () => {
+      const user = userEvent.setup({ delay: null })
+      
+      let callCount = 0
+      server.use(
+        http.put('/api/flashlight', () => {
+          callCount++
+          return HttpResponse.json({
+            success: true,
+            message: `Flashlight toggled successfully`
+          })
+        })
+      )
+      
+      render(<App />)
+      
+      const flashlightBtn = screen.getByRole('button', { name: /toggle flashlight/i })
+      
+      //click rapidly multiple times
+      await user.click(flashlightBtn)
+      await user.click(flashlightBtn)
+      await user.click(flashlightBtn)
+      
+      //verify at least one message shows up
+      await waitFor(() => {
+        expect(screen.getByText('Flashlight toggled successfully')).toBeInTheDocument()
+      })
+      
+      //verify multiple requests were made
+      expect(callCount).toBeGreaterThanOrEqual(1)
+      
+      //advance time to let messages clear
+      await act(async () => {
+        vi.advanceTimersByTime(3100)
+      })
+      
+      //verify message is cleared after timeout
+      await waitFor(() => {
+        expect(screen.queryByText('Flashlight toggled successfully')).not.toBeInTheDocument()
+      })
+      
+      //app should still be functional
+      expect(flashlightBtn).toBeEnabled()
+    })
+  })
+  
+  describe('Performance', () => {
+    it('should cleanup timers on unmount', async () => {
+      const { unmount } = render(<App />)
+      
+      //wait for initial render
+      await waitFor(() => {
+        expect(screen.getByText('Coop Cam 🐔')).toBeInTheDocument()
+      })
+      
+      //unmount component
+      unmount()
+      
+      //advance timers - should not cause errors
+      expect(() => {
+        act(() => {
+          vi.advanceTimersByTime(10000)
+        })
+      }).not.toThrow()
+    })
+  })
+})

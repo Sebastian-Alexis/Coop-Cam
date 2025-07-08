@@ -254,7 +254,5 @@ describe('App Component', () => {
         expect(card).toHaveClass('bg-base-100', 'shadow-xl')
       })
     })
-  TODO: 301
   })
-TODO: 497
 })

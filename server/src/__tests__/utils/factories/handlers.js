@@ -34,8 +34,9 @@ export const createErrorHandler = (endpoint, method = 'get', options = {}) => {
     if (delay > 0) {
       await new Promise(resolve => setTimeout(resolve, delay))
     }
+    
     if (message) {
-          return new HttpResponse(JSON.stringify({ error: message }), {
+      return new HttpResponse(JSON.stringify({ error: message }), {
         status,
         headers: { 'Content-Type': 'application/json' }
       })

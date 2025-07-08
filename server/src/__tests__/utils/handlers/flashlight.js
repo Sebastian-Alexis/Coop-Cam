@@ -26,7 +26,6 @@ export const createFlashlightTimeoutHandler = (baseUrl = DEFAULT_DROIDCAM_URL, d
     return new HttpResponse(null, { status: 408 })
   })
 
-
 //unauthorized handler
 export const createFlashlightUnauthorizedHandler = (baseUrl = DEFAULT_DROIDCAM_URL) =>
   http.put(`${baseUrl}/v1/camera/torch_toggle`, () => {

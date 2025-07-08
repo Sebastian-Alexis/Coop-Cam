@@ -32,9 +32,8 @@ class HandlerStateManager {
    */
   verifyCleanState() {
     const currentCount = this.getCurrentHandlerCount()
-        return currentCount === this.initialHandlerCount
+    return currentCount === this.initialHandlerCount
   }
-  
   
   /**
    * Get current handler state
@@ -154,7 +153,6 @@ export const describeWithHandlerVerification = (name, fn) => {
     fn()
   })
 }
-
 
 //export all utilities
 export const handlerVerification = {

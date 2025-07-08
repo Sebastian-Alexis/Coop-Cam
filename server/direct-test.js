@@ -1,6 +1,6 @@
 import http from 'http';
 
-const DROIDCAM_URL = 'http://192.168.1.147:4747/video';
+const DROIDCAM_URL = 'http://192.168.1.67:4747/video';
 
 console.log('Direct DroidCam test...');
 console.log('Make sure no other clients are connected to DroidCam!\n');

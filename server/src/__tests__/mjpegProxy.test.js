@@ -289,3 +289,49 @@ describe('MjpegProxy', () => {
       proxy.connect()
       
       await new Promise(resolve => setTimeout(resolve, 10))
+      
+      expect(proxy.isConnected).toBe(true)
+      expect(mockRequest.setTimeout).toHaveBeenCalledWith(10000, expect.any(Function))
+    })
+    
+    it('should handle DroidCam busy response', async () => {
+      mockResponse.statusCode = 200
+      mockResponse.headers['content-type'] = 'text/html'
+      
+      proxy.connect()
+      
+      await new Promise(resolve => setTimeout(resolve, 10))
+      mockResponse.emit('data', Buffer.from('<html>DroidCam is Busy</html>'))
+      mockResponse.emit('end')
+      
+      expect(proxy.isConnected).toBe(false)
+    })
+    
+    it('should handle non-200 status codes', async () => {
+      mockResponse.statusCode = 404
+      
+      proxy.connect()
+      
+      await new Promise(resolve => setTimeout(resolve, 10))
+      mockResponse.emit('end')
+      
+      expect(proxy.isConnected).toBe(false)
+    })
+    
+    it('should schedule reconnection on disconnect', async () => {
+      vi.useFakeTimers()
+      
+      proxy.handleDisconnect()
+      
+      expect(proxy.isConnected).toBe(false)
+      expect(proxy.clients.size).toBe(0)
+      
+      //fast-forward time
+      vi.advanceTimersByTime(5000)
+      
+      expect(http.get).toHaveBeenCalledTimes(1) //only reconnect (no initial due to disableAutoConnect)
+      
+      vi.useRealTimers()
+    })
+  })
+})

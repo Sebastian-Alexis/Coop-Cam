@@ -145,7 +145,6 @@ export const useHandlerVerification = () => {
   handlerStateManager.assertCleanState()
 }
 
-
 /**
  * Get detailed handler state report
  */

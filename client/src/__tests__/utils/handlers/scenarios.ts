@@ -2,9 +2,6 @@ import { http, HttpResponse } from 'msw'
 import { statsErrorHandler } from './stats'
 import { flashlightErrorHandler } from './flashlight'
 
-
-
-
 //network failure scenario - all endpoints fail
 export const networkFailureScenario = [
   http.get('/api/stats', () => HttpResponse.error()),

@@ -4,7 +4,7 @@ export const config = {
   DROIDCAM_PORT: process.env.DROIDCAM_PORT || '4747',
   
   // Server configuration
-  SERVER_PORT: process.env.PORT || 3001,
+  SERVER_PORT: parseInt(process.env.PORT || '3001', 10),
   
   // CORS settings
   CORS_ORIGIN: process.env.NODE_ENV === 'production' 

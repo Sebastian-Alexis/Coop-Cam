@@ -2,7 +2,7 @@ import http from 'http';
 import { EventEmitter } from 'events';
 
 class MjpegProxy extends EventEmitter {
-  constructor(sourceUrl) {
+  constructor(sourceUrl, options = {}) {
     super();
     this.sourceUrl = sourceUrl;
     this.clients = new Map();
@@ -12,7 +12,10 @@ class MjpegProxy extends EventEmitter {
     this.reconnectTimeout = null;
     this.lastFrame = null; // Cache last frame for new clients
     
-    this.connect();
+    //start connection unless disabled
+    if (!options.disableAutoConnect) {
+      this.connect();
+    }
   }
 
   connect() {
@@ -56,11 +59,7 @@ class MjpegProxy extends EventEmitter {
       }
       
       console.log(`[Proxy] Connected to source. Content-Type: ${contentType}`);
-      
       this.emit('connected');
-
-
-
 
       // Handle incoming data
       let buffer = Buffer.alloc(0);
@@ -239,8 +238,6 @@ class MjpegProxy extends EventEmitter {
       hasLastFrame: !!this.lastFrame
     };
   }
-}
-
 }
 
 export default MjpegProxy;

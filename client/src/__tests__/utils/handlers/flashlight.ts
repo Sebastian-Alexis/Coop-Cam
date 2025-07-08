@@ -19,7 +19,7 @@ export const flashlightHandler = http.put('/api/flashlight', () => {
 export const flashlightErrorHandler = http.put('/api/flashlight', () => {
   return HttpResponse.json<FlashlightResponse>({
     success: false,
-        message: 'Failed to toggle flashlight',
+    message: 'Failed to toggle flashlight',
     error: 'Network error'
   }, { status: 500 })
 })

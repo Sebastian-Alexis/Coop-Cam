@@ -41,10 +41,6 @@ export const createStreamTimeoutHandler = (baseUrl = DEFAULT_DROIDCAM_URL, delay
     return new HttpResponse(null, { status: 408 })
   })
 
-
-
-
-
 //single frame handler
 export const createSingleFrameHandler = (baseUrl = DEFAULT_DROIDCAM_URL) =>
   http.get(`${baseUrl}/video`, () => {

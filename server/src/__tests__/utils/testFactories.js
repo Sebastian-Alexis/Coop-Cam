@@ -45,6 +45,5 @@ export const createMockResponse = () => {
     send: vi.fn(),
     headersSent: false
   }
-  
   return res
 }

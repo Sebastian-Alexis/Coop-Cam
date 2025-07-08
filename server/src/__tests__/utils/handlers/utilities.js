@@ -12,11 +12,12 @@ export const createMockJpegFrame = () => {
 //create multiple frames for stream testing
 export const createMockJpegStream = (frameCount = 2) => {
   const frames = []
-    // TEMP_DELETE_2373: 6 lines removed
-//create mock HTML response for DroidCam busy state
-export const createBusyHtml = (message = 'DroidCam is Busy') => {
-  return `<html><body>${message}</body></html>`
+  for (let i = 0; i < frameCount; i++) {
+    frames.push(createMockJpegFrame())
+  }
+  return Buffer.concat(frames)
 }
+
 //create mock HTML response for DroidCam busy state
 export const createBusyHtml = (message = 'DroidCam is Busy') => {
   return `<html><body>${message}</body></html>`

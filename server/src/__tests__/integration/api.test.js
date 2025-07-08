@@ -159,3 +159,47 @@ describe('API Endpoints Integration Tests', () => {
           done()
         })
       
+      //give it time to register then abort
+      setTimeout(() => {
+        req.abort()
+      }, 100)
+    })
+  })
+  
+  describe('Static file routes', () => {
+    it('should serve index.html at root', async () => {
+      await request(app)
+        .get('/')
+        .expect(200)
+        .expect('Content-Type', /html/)
+    })
+    
+    it('should serve coop.html', async () => {
+      await request(app)
+        .get('/coop')
+        .expect(200)
+        .expect('Content-Type', /html/)
+    })
+    
+    it('should serve chickens.html', async () => {
+      await request(app)
+        .get('/chickens')
+        .expect(200)
+        .expect('Content-Type', /html/)
+    })
+  })
+  
+  describe('Error handling', () => {
+    it('should handle 404 for unknown routes', async () => {
+      await request(app)
+        .get('/api/unknown')
+        .expect(404)
+    })
+    
+    it('should handle invalid HTTP methods', async () => {
+      await request(app)
+        .post('/api/stats')
+        .expect(404)
+    })
+  })
+})

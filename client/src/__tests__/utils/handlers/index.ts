@@ -3,8 +3,6 @@ import { statsHandler, statsErrorHandler } from './stats'
 import { flashlightHandler, flashlightErrorHandler } from './flashlight'
 
 //default handlers for happy path testing
-
-
 export const handlers = [
   statsHandler,
   flashlightHandler

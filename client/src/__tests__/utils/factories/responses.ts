@@ -35,3 +35,17 @@ export const createErrorResponse = (status: number, message?: string) => ({
   status,
   message: message || `Error: ${status}`
 })
+
+//common response scenarios
+export const responses = {
+  stats: {
+    connected: () => createStatsResponse(),
+    disconnected: () => createStatsResponse({ isConnected: false, clientCount: 0, sourceUrl: '' }),
+    noClients: () => createStatsResponse({ clientCount: 0 }),
+    manyClients: (count: number) => createStatsResponse({ clientCount: count })
+  },
+  flashlight: {
+    success: () => createFlashlightResponse(true),
+    failure: (error?: string) => createFlashlightResponse(false, { error })
+  }
+}

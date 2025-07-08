@@ -13,10 +13,6 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // Middleware
-
-
-
-
 app.use(morgan('dev'));
 app.use(cors({
   origin: config.CORS_ORIGIN,
@@ -25,7 +21,9 @@ app.use(cors({
 app.use(express.json());
 
 // Create MJPEG proxy instance
-const mjpegProxy = new MjpegProxy(DROIDCAM_URL);
+const mjpegProxy = new MjpegProxy(DROIDCAM_URL, {
+  disableAutoConnect: process.env.NODE_ENV === 'test'
+});
 
 // API Routes
 app.get('/api/stream', (req, res) => {
@@ -99,13 +97,15 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// Start server
+// Start server only if not in test environment
 const PORT = config.SERVER_PORT;
-app.listen(PORT, () => {
-  console.log(`[Server] Running on port ${PORT}`);
-  console.log(`[Server] DroidCam URL: ${DROIDCAM_URL}`);
-  console.log(`[Server] CORS origin: ${config.CORS_ORIGIN}`);
-});
+if (process.env.NODE_ENV !== 'test' && import.meta.url === `file://${process.argv[1]}`) {
+  app.listen(PORT, () => {
+    console.log(`[Server] Running on port ${PORT}`);
+    console.log(`[Server] DroidCam URL: ${DROIDCAM_URL}`);
+    console.log(`[Server] CORS origin: ${config.CORS_ORIGIN}`);
+  });
+}
 
 // Handle process termination
 process.on('SIGINT', () => {

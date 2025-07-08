@@ -267,9 +267,8 @@ describe('MjpegProxy Integration Tests', () => {
       const frame = createMockJpegFrame()
       proxy.broadcast(frame)
       
-  //fast client should receive frame
+      //fast client should receive frame
       expect(fastClient.res.write).toHaveBeenCalled()
-      
       
       //slow client should be removed
       expect(proxy.clients.has('slow')).toBe(false)
