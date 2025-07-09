@@ -239,7 +239,7 @@ describe('MjpegProxy Integration Tests', () => {
   })
   
   describe('Performance scenarios', () => {
-    it('should handle slow clients without blocking others', async () => {
+    it('should handle slow clients without blocking others', () => {
       const fastClient = {
         id: 'fast',
         res: {
@@ -253,7 +253,6 @@ describe('MjpegProxy Integration Tests', () => {
         id: 'slow',
         res: {
           write: vi.fn(() => {
-            //simulate write error
             throw new Error('Slow client error')
           }),
           writableEnded: false

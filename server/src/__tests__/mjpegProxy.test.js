@@ -121,12 +121,18 @@ describe('MjpegProxy', () => {
       const frame = Buffer.from('test frame')
       const client1 = {
         id: 'client1',
-        res: { write: vi.fn(() => true), writableEnded: false },
+        res: { 
+          write: vi.fn(() => true), 
+          writableEnded: false 
+        },
         connected: true
       }
       const client2 = {
         id: 'client2',
-        res: { write: vi.fn(() => true), writableEnded: false },
+        res: { 
+          write: vi.fn(() => true), 
+          writableEnded: false 
+        },
         connected: true
       }
       
@@ -151,7 +157,12 @@ describe('MjpegProxy', () => {
       const frame = Buffer.from('test frame')
       const failingClient = {
         id: 'failing',
-        res: { write: vi.fn(() => { throw new Error('Write failed') }), writableEnded: false },
+        res: { 
+          write: vi.fn(() => {
+            throw new Error('Write failed')
+          }), 
+          writableEnded: false 
+        },
         connected: true
       }
       
@@ -291,7 +302,7 @@ describe('MjpegProxy', () => {
       await new Promise(resolve => setTimeout(resolve, 10))
       
       expect(proxy.isConnected).toBe(true)
-      expect(mockRequest.setTimeout).toHaveBeenCalledWith(10000, expect.any(Function))
+      expect(mockRequest.setTimeout).toHaveBeenCalledWith(30000, expect.any(Function))
     })
     
     it('should handle DroidCam busy response', async () => {

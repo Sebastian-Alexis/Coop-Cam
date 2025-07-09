@@ -135,6 +135,8 @@
               src="/api/stream" 
               alt="Live Coop Stream" 
               class="w-full h-full object-contain"
+              onerror="handleStreamError()"
+              onload="handleStreamLoad()"
             />
           </div>
         </div>
@@ -219,6 +221,95 @@
 
   <script>
     let countdownInterval = null;
+    let reconnectTimeout = null;
+    let streamRetryCount = 0;
+    let streamLoadTime = null;
+    let frameCount = 0;
+    const MAX_RETRY_COUNT = 10;
+    const RETRY_DELAY = 2000; // Start with 2 seconds
+    
+    //debug stream status
+    function handleStreamError() {
+      console.error('Stream error detected');
+      streamLoadTime = null;
+    }
+    
+    function handleStreamLoad() {
+      if (!streamLoadTime) {
+        streamLoadTime = Date.now();
+        console.log('Stream started loading');
+      }
+      frameCount++;
+      if (frameCount % 30 === 0) {
+        console.log(`Stream active - ${frameCount} frames loaded`);
+      }
+    }
+
+    //auto-reconnect stream on error
+    function setupStreamReconnection() {
+      const streamImg = document.getElementById('stream');
+      
+      streamImg.onerror = function() {
+        console.log('Stream connection lost, attempting to reconnect...');
+        
+        if (reconnectTimeout) {
+          clearTimeout(reconnectTimeout);
+        }
+        
+        if (streamRetryCount < MAX_RETRY_COUNT) {
+          streamRetryCount++;
+          const delay = RETRY_DELAY * Math.min(streamRetryCount, 5); // Cap at 10 seconds
+          
+          reconnectTimeout = setTimeout(() => {
+            console.log(`Reconnecting stream (attempt ${streamRetryCount}/${MAX_RETRY_COUNT})...`);
+            // Force reload by adding timestamp
+            streamImg.src = `/api/stream?t=${Date.now()}`;
+          }, delay);
+        } else {
+          console.error('Max reconnection attempts reached');
+          // Show reconnect button after max attempts
+          showReconnectButton();
+        }
+      };
+      
+      streamImg.onload = function() {
+        // Reset retry count on successful load
+        if (streamRetryCount > 0) {
+          console.log('Stream reconnected successfully');
+          streamRetryCount = 0;
+        }
+      };
+    }
+
+    //show manual reconnect button
+    function showReconnectButton() {
+      const streamContainer = document.querySelector('.relative.w-full.h-full');
+      if (!document.getElementById('reconnectBtn')) {
+        const reconnectBtn = document.createElement('button');
+        reconnectBtn.id = 'reconnectBtn';
+        reconnectBtn.className = 'absolute inset-0 bg-base-300/80 flex items-center justify-center';
+        reconnectBtn.innerHTML = `
+          <div class="text-center">
+            <p class="mb-4">Stream connection lost</p>
+            <button onclick="manualReconnect()" class="btn btn-primary">
+              Reconnect
+            </button>
+          </div>
+        `;
+        streamContainer.appendChild(reconnectBtn);
+      }
+    }
+
+    //manual reconnect
+    function manualReconnect() {
+      const reconnectBtn = document.getElementById('reconnectBtn');
+      if (reconnectBtn) {
+        reconnectBtn.remove();
+      }
+      streamRetryCount = 0;
+      const streamImg = document.getElementById('stream');
+      streamImg.src = `/api/stream?t=${Date.now()}`;
+    }
 
     //check flashlight status from server
     async function checkFlashlightStatus() {
@@ -333,6 +424,7 @@
     updateTime();
     updateStats();
     checkFlashlightStatus();
+    setupStreamReconnection();
     
     //periodic updates
     setInterval(updateTime, 1000);

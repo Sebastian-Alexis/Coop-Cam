@@ -1,5 +1,6 @@
 import express from 'express';
 import morgan from 'morgan';
+import compression from 'compression';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -13,7 +14,22 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // Middleware
-app.use(morgan('dev'));
+// Only use morgan in development mode for better performance
+if (process.env.NODE_ENV !== 'production') {
+  app.use(morgan('dev'));
+}
+
+// Enable compression for all routes except the stream
+app.use(compression({
+  filter: (req, res) => {
+    // Don't compress the MJPEG stream
+    if (req.path === '/api/stream') {
+      return false;
+    }
+    // Use default compression filter for other routes
+    return compression.filter(req, res);
+  }
+}));
 
 app.use(express.json());
 
@@ -34,8 +50,21 @@ const FLASHLIGHT_AUTO_OFF_DURATION = 5 * 60 * 1000;
 
 // API Routes
 app.get('/api/stream', (req, res) => {
-  const clientId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  mjpegProxy.addClient(clientId, res);
+  // Parse FPS from query parameter
+  const fps = req.query.fps ? parseInt(req.query.fps) : null;
+  const clientId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}${fps ? `-fps${fps}` : ''}`;
+  
+  // Set TCP_NODELAY for low-latency streaming
+  if (req.socket && req.socket.setNoDelay) {
+    req.socket.setNoDelay(true);
+  }
+  
+  // Set socket timeout to prevent hanging connections
+  if (req.socket && req.socket.setTimeout) {
+    req.socket.setTimeout(0); // Disable timeout for streaming
+  }
+  
+  mjpegProxy.addClient(clientId, res, fps);
 });
 
 app.get('/api/stats', (req, res) => {
@@ -45,7 +74,8 @@ app.get('/api/stats', (req, res) => {
     clientCount: stats.clientCount,
     sourceUrl: stats.sourceUrl,
     hasLastFrame: stats.hasLastFrame,
-    serverTime: new Date().toISOString()
+    serverTime: new Date().toISOString(),
+    frameCount: mjpegProxy.frameCount || 0
   });
 });
 
@@ -216,18 +246,27 @@ app.get('/api/droidcam-status', async (req, res) => {
   }
 });
 
-// Serve static HTML pages
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'views', 'index.html'));
-});
+// Serve static HTML pages with cache headers
+const serveStaticHTML = (filename) => (req, res) => {
+  const filePath = path.join(__dirname, 'views', filename);
+  
+  // Set cache headers for static assets
+  res.set({
+    'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+    'X-Content-Type-Options': 'nosniff'
+  });
+  
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      console.error(`Error serving ${filename}:`, err);
+      res.status(404).send('Page not found');
+    }
+  });
+};
 
-app.get('/coop', (req, res) => {
-  res.sendFile(path.join(__dirname, 'views', 'coop.html'));
-});
-
-app.get('/about', (req, res) => {
-  res.sendFile(path.join(__dirname, 'views', 'about.html'));
-});
+app.get('/', serveStaticHTML('index.html'));
+app.get('/coop', serveStaticHTML('coop.html'));
+app.get('/about', serveStaticHTML('about.html'));
 
 // Catch-all route for undefined paths
 app.get('*', (req, res, next) => {

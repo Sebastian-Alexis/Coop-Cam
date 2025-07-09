@@ -11,6 +11,12 @@ class MjpegProxy extends EventEmitter {
     this.isConnected = false;
     this.reconnectTimeout = null;
     this.lastFrame = null; // Cache last frame for new clients
+    this.frameCount = 0;
+    this.lastFrameTime = Date.now();
+    this.frameRateLimiter = new Map(); // Track per-client frame rate limits
+    this.lastBroadcastTime = 0;
+    this.serverFpsLimit = 30; // Server-side FPS limit
+    this.serverFrameInterval = 1000 / this.serverFpsLimit; // 33ms for 30 FPS
     
     //start connection unless disabled
     if (!options.disableAutoConnect) {
@@ -27,6 +33,10 @@ class MjpegProxy extends EventEmitter {
     console.log(`[Proxy] Connecting to MJPEG source: ${this.sourceUrl}`);
     
     const request = http.get(this.sourceUrl, (response) => {
+      // Set TCP_NODELAY for low latency
+      if (response.socket && response.socket.setNoDelay) {
+        response.socket.setNoDelay(true);
+      }
       if (response.statusCode !== 200) {
         console.error(`[Proxy] Source returned status ${response.statusCode}`);
         this.scheduleReconnect();
@@ -61,29 +71,93 @@ class MjpegProxy extends EventEmitter {
       console.log(`[Proxy] Connected to source. Content-Type: ${contentType}`);
       this.emit('connected');
 
-      // Handle incoming data
-      let buffer = Buffer.alloc(0);
+      // Handle incoming data with optimized buffer management
+      const BUFFER_SIZE = 1024 * 1024; // 1MB pre-allocated buffer
+      const MAX_BUFFER_SIZE = 5 * 1024 * 1024; // 5MB max to prevent memory issues
       
+      let buffer = Buffer.allocUnsafe(BUFFER_SIZE);
+      let bufferOffset = 0;
       let totalBytes = 0;
       let frameCount = 0;
       
       response.on('data', (chunk) => {
         totalBytes += chunk.length;
-        buffer = Buffer.concat([buffer, chunk]);
         
-        // Try to extract complete frames
-        const frames = this.extractFrames(buffer);
-        buffer = frames.remainder;
-        
-        if (frames.completeFrames.length > 0) {
-          frameCount += frames.completeFrames.length;
-          console.log(`[Proxy] Extracted ${frames.completeFrames.length} frames (total: ${frameCount}, bytes: ${totalBytes})`);
+        // If chunk won't fit in current buffer, process what we have first
+        if (bufferOffset + chunk.length > buffer.length) {
+          // Process existing buffer content
+          const frames = this.extractFrames(buffer.slice(0, bufferOffset));
+          
+          if (frames.completeFrames.length > 0) {
+            frameCount += frames.completeFrames.length;
+            console.log(`[Proxy] Extracted ${frames.completeFrames.length} frames (total: ${frameCount}, bytes: ${totalBytes})`);
+          }
+          
+          frames.completeFrames.forEach(frame => {
+            this.lastFrame = frame; // Cache frame
+            this.frameCount++;
+            
+            // Server-side frame rate limiting to 30 FPS
+            const now = Date.now();
+            const timeSinceLastBroadcast = now - this.lastBroadcastTime;
+            
+            if (timeSinceLastBroadcast >= this.serverFrameInterval) {
+              this.lastBroadcastTime = now;
+              this.broadcast(frame);
+            }
+          });
+          
+          // Handle remainder
+          if (frames.remainder.length > 0) {
+            // Check for oversized buffer
+            if (frames.remainder.length > MAX_BUFFER_SIZE) {
+              console.warn(`[Proxy] Buffer overflow protection: dropping ${frames.remainder.length} bytes`);
+              bufferOffset = 0;
+            } else {
+              // Copy remainder to start of buffer
+              frames.remainder.copy(buffer, 0);
+              bufferOffset = frames.remainder.length;
+            }
+          } else {
+            bufferOffset = 0;
+          }
         }
         
-        frames.completeFrames.forEach(frame => {
-          this.lastFrame = frame; // Cache frame
-          this.broadcast(frame);
-        });
+        // Add new chunk to buffer
+        if (bufferOffset + chunk.length <= buffer.length) {
+          chunk.copy(buffer, bufferOffset);
+          bufferOffset += chunk.length;
+          
+          // Try to extract frames from current buffer
+          const frames = this.extractFrames(buffer.slice(0, bufferOffset));
+          
+          if (frames.completeFrames.length > 0) {
+            frameCount += frames.completeFrames.length;
+            console.log(`[Proxy] Extracted ${frames.completeFrames.length} frames (total: ${frameCount}, bytes: ${totalBytes})`);
+          }
+          
+          frames.completeFrames.forEach(frame => {
+            this.lastFrame = frame; // Cache frame
+            this.frameCount++;
+            
+            // Server-side frame rate limiting to 30 FPS
+            const now = Date.now();
+            const timeSinceLastBroadcast = now - this.lastBroadcastTime;
+            
+            if (timeSinceLastBroadcast >= this.serverFrameInterval) {
+              this.lastBroadcastTime = now;
+              this.broadcast(frame);
+            }
+          });
+          
+          // Update buffer with remainder
+          if (frames.remainder.length > 0) {
+            frames.remainder.copy(buffer, 0);
+            bufferOffset = frames.remainder.length;
+          } else {
+            bufferOffset = 0;
+          }
+        }
       });
 
       response.on('end', () => {
@@ -102,7 +176,8 @@ class MjpegProxy extends EventEmitter {
       this.handleDisconnect();
     });
 
-    request.setTimeout(10000, () => {
+    // Increase timeout for slower connections/networks
+    request.setTimeout(30000, () => {
       console.error('[Proxy] Connection timeout');
       request.destroy();
       this.handleDisconnect();
@@ -111,22 +186,44 @@ class MjpegProxy extends EventEmitter {
 
   extractFrames(buffer) {
     const frames = [];
-    let remainder = buffer;
+    let offset = 0;
+    const bufferLength = buffer.length;
     
-    // Try to extract JPEG frames directly (DroidCam doesn't use boundary markers)
-    while (true) {
-      const jpegStart = remainder.indexOf(Buffer.from([0xFF, 0xD8]));
+    // Optimized frame extraction using manual search for better performance
+    while (offset < bufferLength - 1) {
+      // Look for JPEG start marker (0xFF 0xD8)
+      let jpegStart = -1;
+      for (let i = offset; i < bufferLength - 1; i++) {
+        if (buffer[i] === 0xFF && buffer[i + 1] === 0xD8) {
+          jpegStart = i;
+          break;
+        }
+      }
+      
       if (jpegStart === -1) break;
       
-      const jpegEnd = remainder.indexOf(Buffer.from([0xFF, 0xD9]), jpegStart + 2);
-      if (jpegEnd === -1) break;
+      // Look for JPEG end marker (0xFF 0xD9) starting after the header
+      let jpegEnd = -1;
+      for (let i = jpegStart + 2; i < bufferLength - 1; i++) {
+        if (buffer[i] === 0xFF && buffer[i + 1] === 0xD9) {
+          jpegEnd = i;
+          break;
+        }
+      }
+      
+      if (jpegEnd === -1) {
+        // No end marker found, return remainder from jpegStart
+        return { completeFrames: frames, remainder: buffer.slice(jpegStart) };
+      }
       
       // Extract complete JPEG including end marker
-      const frame = remainder.slice(jpegStart, jpegEnd + 2);
+      const frame = buffer.slice(jpegStart, jpegEnd + 2);
       frames.push(frame);
-      remainder = remainder.slice(jpegEnd + 2);
+      offset = jpegEnd + 2;
     }
     
+    // Return any remaining data
+    const remainder = offset < bufferLength ? buffer.slice(offset) : Buffer.alloc(0);
     return { completeFrames: frames, remainder };
   }
 
@@ -158,11 +255,39 @@ class MjpegProxy extends EventEmitter {
     }, 5000);
   }
 
-  addClient(clientId, res) {
-    const client = { id: clientId, res, connected: true };
+  addClient(clientId, res, fps = null) {
+    // Parse FPS from client ID if provided (format: timestamp-random-fps15)
+    let targetFps = fps;
+    if (!targetFps && clientId.includes('-fps')) {
+      const match = clientId.match(/-fps(\d+)$/);
+      if (match) {
+        targetFps = parseInt(match[1]);
+      }
+    }
+    
+    const client = { 
+      id: clientId, 
+      res, 
+      connected: true,
+      fps: targetFps,
+      lastFrameTime: 0,
+      frameInterval: targetFps ? 1000 / targetFps : 0,
+      isPaused: false
+    };
     this.clients.set(clientId, client);
     
-    console.log(`[Proxy] Client ${clientId} connected. Total clients: ${this.clients.size}`);
+    // Handle backpressure - resume when buffer drains
+    res.on('drain', () => {
+      if (client.isPaused) {
+        client.isPaused = false;
+        // Only log every 10th resume to match pause logging
+        if (client.pauseCount && client.pauseCount % 10 === 1) {
+          console.log(`[Proxy] Client ${clientId} resumed after backpressure`);
+        }
+      }
+    });
+    
+    console.log(`[Proxy] Client ${clientId} connected. Total clients: ${this.clients.size}${targetFps ? ` (FPS: ${targetFps})` : ''}`);
     
     // Send headers
     const boundary = 'frame';
@@ -171,9 +296,15 @@ class MjpegProxy extends EventEmitter {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
       'Pragma': 'no-cache',
       'Expires': '0',
-      'Connection': 'close',
-      'Access-Control-Allow-Origin': '*'
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'X-Content-Type-Options': 'nosniff'
     });
+    
+    // Force flush headers if available
+    if (res.flushHeaders) {
+      res.flushHeaders();
+    }
     
     // Send last frame if available (reduces initial loading time)
     if (this.lastFrame && this.lastFrame.length > 0) {
@@ -203,8 +334,8 @@ class MjpegProxy extends EventEmitter {
   }
 
   broadcast(frame) {
-    const deadClients = [];
     const boundary = 'frame';
+    const now = Date.now();
     
     // Format frame with boundary for MJPEG
     const frameData = Buffer.concat([
@@ -213,16 +344,53 @@ class MjpegProxy extends EventEmitter {
       Buffer.from('\r\n')
     ]);
     
-    this.clients.forEach((client) => {
+    const deadClients = [];
+    
+    this.clients.forEach((client, clientId) => {
+      if (!client.connected || client.res.writableEnded) {
+        deadClients.push(clientId);
+        return;
+      }
+      
+      // Skip if client is paused due to backpressure
+      if (client.isPaused) {
+        return;
+      }
+      
+      // Check frame rate limit for this client
+      if (client.frameInterval > 0) {
+        const timeSinceLastFrame = now - client.lastFrameTime;
+        if (timeSinceLastFrame < client.frameInterval) {
+          // Skip this frame for this client
+          return;
+        }
+      }
+      
+      // Update last frame time for this client
+      client.lastFrameTime = now;
+      
       try {
-        if (client.connected && !client.res.writableEnded) {
-          client.res.write(frameData);
-        } else {
-          deadClients.push(client.id);
+        // Write with non-blocking check
+        const canWrite = client.res.write(frameData);
+        
+        if (!canWrite) {
+          // Backpressure detected - pause this client
+          client.isPaused = true;
+          client.pauseCount = (client.pauseCount || 0) + 1;
+          
+          // Only log every 10th pause to reduce spam
+          if (client.pauseCount % 10 === 1) {
+            console.log(`[Proxy] Client ${clientId} experiencing backpressure (${client.pauseCount} times)`);
+          }
+        }
+        
+        // Force flush if available to prevent buffering
+        if (client.res.flush && typeof client.res.flush === 'function') {
+          client.res.flush();
         }
       } catch (error) {
-        console.error(`[Proxy] Error writing to client ${client.id}:`, error.message);
-        deadClients.push(client.id);
+        console.error(`[Proxy] Error writing to client ${clientId}:`, error.message);
+        deadClients.push(clientId);
       }
     });
     
