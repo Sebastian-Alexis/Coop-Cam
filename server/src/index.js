@@ -146,8 +146,8 @@ app.get('/coop', (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'coop.html'));
 });
 
-app.get('/chickens', (req, res) => {
-  res.sendFile(path.join(__dirname, 'views', 'chickens.html'));
+app.get('/about', (req, res) => {
+  res.sendFile(path.join(__dirname, 'views', 'about.html'));
 });
 
 // Catch-all route for undefined paths
@@ -186,7 +186,7 @@ if (process.env.NODE_ENV !== 'test') {
     console.log('[Server] Static pages available at:');
     console.log(`  - http://${HOST}:${PORT}/         (Landing page)`);
     console.log(`  - http://${HOST}:${PORT}/coop     (Live stream)`);
-    console.log(`  - http://${HOST}:${PORT}/chickens (Information)`);
+    console.log(`  - http://${HOST}:${PORT}/about    (About & Chickens)`);
   });
 } else {
   console.log('[Server] Skipping server startup in test environment');

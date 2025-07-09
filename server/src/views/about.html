@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="caramellatte">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About - Alexis Family Coop</title>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom caramellatte theme */
+    [data-theme="caramellatte"] {
+      color-scheme: light;
+      --b1: 98% 0.016 73.684;
+      --b2: 95% 0.038 75.164;
+      --b3: 90% 0.076 70.697;
+      --bc: 40% 0.123 38.172;
+      --p: 0% 0 0;
+      --pc: 100% 0 0;
+      --s: 22.45% 0.075 37.85;
+      --sc: 90% 0.076 70.697;
+      --a: 46.44% 0.111 37.85;
+      --ac: 90% 0.076 70.697;
+      --n: 55% 0.195 38.402;
+      --nc: 98% 0.016 73.684;
+      --in: 42% 0.199 265.638;
+      --inc: 90% 0.076 70.697;
+      --su: 43% 0.095 166.913;
+      --suc: 90% 0.076 70.697;
+      --wa: 82% 0.189 84.429;
+      --wac: 41% 0.112 45.904;
+      --er: 70% 0.191 22.216;
+      --erc: 39% 0.141 25.723;
+      --rounded-box: 1rem;
+      --rounded-btn: 0.5rem;
+      --rounded-badge: 2rem;
+      --animation-btn: 0.25s;
+      --animation-input: 0.2s;
+      --btn-focus-scale: 0.95;
+      --border-btn: 2px;
+      --tab-border: 2px;
+      --tab-radius: 0.5rem;
+    }
+    
+    /* Better spacing system */
+    .container-padding {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+    
+    @media (min-width: 768px) {
+      .container-padding {
+        padding-left: 2rem;
+        padding-right: 2rem;
+      }
+    }
+    
+    /* Interactive states */
+    .hover-lift {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .hover-lift:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    /* Smooth scrolling */
+    html {
+      scroll-behavior: smooth;
+    }
+    
+    /* Background bands */
+    body {
+      background-image: repeating-linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.01) 0,
+        rgba(0, 0, 0, 0.01) 100px,
+        rgba(0, 0, 0, 0.02) 100px,
+        rgba(0, 0, 0, 0.02) 200px
+      );
+    }
+    
+    /* Grid layout for proper centering */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr min(1200px, 100%) 1fr;
+      gap: 2rem;
+    }
+    
+    .content-area {
+      grid-column: 2;
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 3rem;
+    }
+    
+    @media (max-width: 1023px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .content-area {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    /* Carousel styles */
+    .carousel-wrapper {
+      position: relative;
+      margin: 2rem -2rem; /* Extend beyond content padding */
+      padding: 2rem 0;
+      background: linear-gradient(90deg, transparent 10%, rgba(0, 0, 0, 0.02) 20%, rgba(0, 0, 0, 0.02) 80%, transparent 90%);
+    }
+    
+    @media (min-width: 768px) {
+      .carousel-wrapper {
+        margin: 2rem -3rem;
+      }
+    }
+    
+    .carousel-container {
+      position: relative;
+      width: 100%;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 0 4rem; /* Space for nav buttons */
+    }
+    
+    .carousel-inner {
+      position: relative;
+      overflow: hidden;
+      height: 400px;
+      display: flex;
+      align-items: center;
+    }
+    
+    .carousel-track {
+      display: flex;
+      transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      align-items: center;
+      position: relative;
+      height: 100%;
+    }
+    
+    .carousel-item {
+      flex: 0 0 300px;
+      height: 280px;
+      margin: 0 15px;
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      opacity: 0.4;
+      transform: scale(0.85);
+      position: relative;
+    }
+    
+    .carousel-item.active {
+      opacity: 1;
+      transform: scale(1.1);
+      height: 360px;
+      z-index: 10;
+    }
+    
+    .carousel-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 0.75rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Mobile single-item view */
+    @media (max-width: 768px) {
+      .carousel-wrapper {
+        margin: 1rem -1rem;
+        background: none;
+      }
+      
+      .carousel-inner {
+        height: 300px;
+      }
+      
+      .carousel-track {
+        height: 100%;
+      }
+      
+      .carousel-item {
+        flex: 0 0 100%;
+        height: 100%;
+        margin: 0;
+        opacity: 1;
+        transform: scale(1);
+      }
+      
+      .carousel-item.active {
+        height: 100%;
+        transform: scale(1);
+      }
+    }
+    
+    /* Carousel navigation buttons */
+    .carousel-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      border: none;
+      width: 3rem;
+      height: 3rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      opacity: 0;
+      z-index: 20;
+    }
+    
+    .carousel-container:hover .carousel-btn:not(:disabled) {
+      opacity: 1;
+    }
+    
+    .carousel-btn:hover {
+      background: rgba(0, 0, 0, 0.7);
+      transform: translateY(-50%) scale(1.1);
+    }
+    
+    .carousel-btn:disabled {
+      opacity: 0 !important;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    
+    .carousel-btn.prev {
+      left: 0.5rem;
+    }
+    
+    .carousel-btn.next {
+      right: 0.5rem;
+    }
+    
+    @media (min-width: 768px) {
+      .carousel-btn.prev {
+        left: -1.5rem;
+      }
+      
+      .carousel-btn.next {
+        right: -1.5rem;
+      }
+    }
+    
+    /* Carousel indicators */
+    .carousel-indicators {
+      position: absolute;
+      bottom: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 0.5rem;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .carousel-container:hover .carousel-indicators {
+      opacity: 1;
+    }
+    
+    .carousel-dot {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.5);
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    
+    .carousel-dot.active {
+      background: white;
+      width: 1.5rem;
+      border-radius: 0.25rem;
+    }
+    
+    /* Section separators */
+    .section-separator {
+      width: 60%;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1), transparent);
+      margin: 2rem auto;
+    }
+    
+    /* TOC active state */
+    .toc-link {
+      transition: all 0.2s ease;
+      border-left: 3px solid transparent;
+      padding-left: 1rem;
+      display: block;
+    }
+    
+    .toc-link:hover {
+      border-left-color: rgba(0, 0, 0, 0.1);
+      background-color: rgba(0, 0, 0, 0.02);
+    }
+    
+    .toc-link.active {
+      border-left-color: var(--p);
+      background-color: rgba(0, 0, 0, 0.04);
+      font-weight: 600;
+    }
+    
+    /* Back to top button */
+    .back-to-top {
+      position: fixed;
+      bottom: 2rem;
+      right: calc((100vw - 1200px) / 2 - 4rem); /* Position in right grid column */
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s ease;
+      z-index: 40;
+    }
+    
+    /* Adjust for different screen sizes */
+    @media (max-width: 1280px) {
+      .back-to-top {
+        right: 2rem; /* Move closer on medium screens */
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .back-to-top {
+        right: 1rem; /* Edge position on mobile */
+      }
+    }
+    
+    .back-to-top.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    /* Touch indicators */
+    @media (max-width: 768px) {
+      .carousel-btn {
+        opacity: 1;
+        background: rgba(0, 0, 0, 0.3);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="min-h-screen bg-base-100 flex flex-col">
+    <!-- Header -->
+    <header class="bg-base-200 border-b border-base-300 sticky top-0 z-50">
+      <div class="navbar container-padding max-w-7xl mx-auto">
+        <div class="navbar-start">
+          <a href="/" class="btn btn-ghost btn-sm gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            Home
+          </a>
+        </div>
+        <div class="navbar-center">
+          <h1 class="text-xl md:text-2xl font-bold">About Our Coop</h1>
+        </div>
+        <div class="navbar-end">
+          <a href="/coop" class="btn btn-ghost btn-sm">View Live Stream</a>
+        </div>
+      </div>
+    </header>
+    
+    <!-- Main Content with Grid Layout -->
+    <div class="flex-1 container-padding py-8">
+      <div class="main-grid">
+        <div class="content-area">
+          <!-- Desktop TOC (hidden on mobile) -->
+          <aside class="hidden lg:block">
+            <div class="sticky top-24">
+              <h2 class="font-semibold mb-4 text-sm uppercase tracking-wider opacity-60">Contents</h2>
+              <nav class="space-y-1">
+                <a href="#meet-chickens" class="toc-link py-2 text-sm">Meet the Chickens</a>
+                <div class="ml-4 space-y-1">
+                  <a href="#marshmallow" class="toc-link py-1 text-xs opacity-75">Marshmallow</a>
+                  <a href="#charcoal" class="toc-link py-1 text-xs opacity-75">Charcoal</a>
+                  <a href="#uv" class="toc-link py-1 text-xs opacity-75">UV</a>
+                  <a href="#toasty" class="toc-link py-1 text-xs opacity-75">Toasty</a>
+                  <a href="#rusty" class="toc-link py-1 text-xs opacity-75">Rusty</a>
+                  <a href="#cheetopuff" class="toc-link py-1 text-xs opacity-75">Cheeto Puff</a>
+                </div>
+                <a href="#setup" class="toc-link py-2 text-sm">Setup</a>
+                <div class="ml-4 space-y-1">
+                  <a href="#food" class="toc-link py-1 text-xs opacity-75">Food</a>
+                  <a href="#water" class="toc-link py-1 text-xs opacity-75">Water</a>
+                  <a href="#henhouse" class="toc-link py-1 text-xs opacity-75">Henhouse</a>
+                </div>
+              </nav>
+            </div>
+          </aside>
+          
+          <!-- Main Content -->
+          <main>
+            <!-- Mobile TOC (shown only on mobile) -->
+            <details class="lg:hidden bg-base-200 rounded-xl p-4 mb-6">
+              <summary class="font-semibold cursor-pointer">Table of Contents</summary>
+              <nav class="mt-4 space-y-2">
+                <a href="#meet-chickens" class="block py-1">Meet the Chickens</a>
+                <a href="#setup" class="block py-1">Setup</a>
+              </nav>
+            </details>
+            
+            <!-- Content Container -->
+            <div class="bg-base-200 rounded-2xl p-6 md:p-8 space-y-12">
+              <!-- Meet the Chickens Section -->
+              <section id="meet-chickens">
+                <h2 class="text-3xl font-bold mb-6">Meet the Chickens</h2>
+                <p class="text-lg mb-8">
+                  Our family has 6 chickens in total, all of which are about 4 months old. Each one has their own unique personality and brings joy to our backyard coop.
+                </p>
+                
+                <!-- Chicken List -->
+                <div class="space-y-8">
+                  <!-- Marshmallow -->
+                  <article id="marshmallow" class="chicken-profile">
+                    <h3 class="text-2xl font-bold">Marshmallow</h3>
+                    <p class="text-sm italic text-gray-600 mb-3">Chicken</p>
+                    <div class="carousel-wrapper">
+                      <div class="carousel-container" data-carousel="marshmallow">
+                        <div class="carousel-inner">
+                          <div class="carousel-track">
+                            <div class="carousel-item active">
+                              <img src="/images/chickens/marshmallow/marshmallow-1.jpg" alt="Marshmallow the chicken - photo 1" loading="lazy">
+                            </div>
+                            <div class="carousel-item">
+                              <img src="/images/chickens/marshmallow/marshmallow-2.jpg" alt="Marshmallow the chicken - photo 2" loading="lazy">
+                            </div>
+                            <div class="carousel-item">
+                              <img src="/images/chickens/marshmallow/marshmallow-3.jpg" alt="Marshmallow the chicken - photo 3" loading="lazy">
+                            </div>
+                          </div>
+                        </div>
+                        <button class="carousel-btn prev" aria-label="Previous image">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+                        <button class="carousel-btn next" aria-label="Next image">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                        <div class="carousel-indicators"></div>
+                      </div>
+                    </div>
+                    <p class="text-base mt-4">
+                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
+                    </p>
+                  </article>
+                  
+                  <div class="section-separator"></div>
+                  
+                  <!-- Charcoal -->
+                  <article id="charcoal" class="chicken-profile">
+                    <h3 class="text-2xl font-bold">Charcoal</h3>
+                    <p class="text-sm italic text-gray-600 mb-3">Chicken</p>
+                    <div class="carousel-wrapper">
+                      <div class="carousel-container" data-carousel="charcoal">
+                        <div class="carousel-inner">
+                          <div class="carousel-track">
+                            <div class="carousel-item active">
+                              <img src="/images/chickens/charcoal/charcoal-1.jpg" alt="Charcoal the chicken - photo 1" loading="lazy">
+                            </div>
+                            <div class="carousel-item">
+                              <img src="/images/chickens/charcoal/charcoal-2.jpg" alt="Charcoal the chicken - photo 2" loading="lazy">
+                            </div>
+                            <div class="carousel-item">
+                              <img src="/images/chickens/charcoal/charcoal-3.jpg" alt="Charcoal the chicken - photo 3" loading="lazy">
+                            </div>
+                          </div>
+                        </div>
+                        <button class="carousel-btn prev" aria-label="Previous image">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+                        <button class="carousel-btn next" aria-label="Next image">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                        <div class="carousel-indicators"></div>
+                      </div>
+                    </div>
+                    <p class="text-base mt-4">
+                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
+                    </p>
+                  </article>
+                  
+                  <div class="section-separator"></div>
+                  
+                  <!-- UV -->
+                  <article id="uv" class="chicken-profile">
+                    <h3 class="text-2xl font-bold">UV</h3>
+                    <p class="text-sm italic text-gray-600 mb-3">Chicken</p>
+                    <div class="carousel-wrapper">
+                      <div class="carousel-container" data-carousel="uv">
+                        <div class="carousel-inner">
+                          <div class="carousel-track">
+                            <div class="carousel-item active">
+                              <img src="/images/chickens/uv/uv-1.jpg" alt="UV the chicken - photo 1" loading="lazy">
+                            </div>
+                            <div class="carousel-item">
+                              <img src="/images/chickens/uv/uv-2.jpg" alt="UV the chicken - photo 2" loading="lazy">
+                            </div>
+                            <div class="carousel-item">
+                              <img src="/images/chickens/uv/uv-3.jpg" alt="UV the chicken - photo 3" loading="lazy">
+                            </div>
+                          </div>
+                        </div>
+                        <button class="carousel-btn prev" aria-label="Previous image">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+                        <button class="carousel-btn next" aria-label="Next image">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                        <div class="carousel-indicators"></div>
+                      </div>
+                    </div>
+                    <p class="text-base mt-4">
+                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
+                    </p>
+                  </article>
+                  
+                  <div class="section-separator"></div>
+                  
+                  <!-- Toasty -->
+                  <article id="toasty" class="chicken-profile">
+                    <h3 class="text-2xl font-bold">Toasty</h3>
+                    <p class="text-sm italic text-gray-600 mb-3">Chicken</p>
+                    <div class="carousel-wrapper">
+                      <div class="carousel-container" data-carousel="toasty">
+                        <div class="carousel-inner">
+                          <div class="carousel-track">
+                            <div class="carousel-item active">
+                              <img src="/images/chickens/toasty/toasty-1.jpg" alt="Toasty the chicken - photo 1" loading="lazy">
+                            </div>
+                            <div class="carousel-item">
+                              <img src="/images/chickens/toasty/toasty-2.jpg" alt="Toasty the chicken - photo 2" loading="lazy">
+                            </div>
+                            <div class="carousel-item">
+                              <img src="/images/chickens/toasty/toasty-3.jpg" alt="Toasty the chicken - photo 3" loading="lazy">
+                            </div>
+                          </div>
+                        </div>
+                        <button class="carousel-btn prev" aria-label="Previous image">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+                        <button class="carousel-btn next" aria-label="Next image">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                        <div class="carousel-indicators"></div>
+                      </div>
+                    </div>
+                    <p class="text-base mt-4">
+                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
+                    </p>
+                  </article>
+                  
+                  <div class="section-separator"></div>
+                  
+                  <!-- Rusty -->
+                  <article id="rusty" class="chicken-profile">
+                    <h3 class="text-2xl font-bold">Rusty</h3>
+                    <p class="text-sm italic text-gray-600 mb-3">Chicken</p>
+                    <div class="carousel-wrapper">
+                      <div class="carousel-container" data-carousel="rusty">
+                        <div class="carousel-inner">
+                          <div class="carousel-track">
+                            <div class="carousel-item active">
+                              <img src="/images/chickens/rusty/rusty-1.jpg" alt="Rusty the chicken - photo 1" loading="lazy">
+                            </div>
+                            <div class="carousel-item">
+                              <img src="/images/chickens/rusty/rusty-2.jpg" alt="Rusty the chicken - photo 2" loading="lazy">
+                            </div>
+                            <div class="carousel-item">
+                              <img src="/images/chickens/rusty/rusty-3.jpg" alt="Rusty the chicken - photo 3" loading="lazy">
+                            </div>
+                          </div>
+                        </div>
+                        <button class="carousel-btn prev" aria-label="Previous image">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+                        <button class="carousel-btn next" aria-label="Next image">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                        <div class="carousel-indicators"></div>
+                      </div>
+                    </div>
+                    <p class="text-base mt-4">
+                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
+                    </p>
+                  </article>
+                  
+                  <div class="section-separator"></div>
+                  
+                  <!-- Cheeto Puff -->
+                  <article id="cheetopuff" class="chicken-profile">
+                    <h3 class="text-2xl font-bold">Cheeto Puff</h3>
+                    <p class="text-sm italic text-gray-600 mb-3">Chicken</p>
+                    <div class="carousel-wrapper">
+                      <div class="carousel-container" data-carousel="cheetopuff">
+                        <div class="carousel-inner">
+                          <div class="carousel-track">
+                            <div class="carousel-item active">
+                              <img src="/images/chickens/cheetopuff/cheetopuff-1.jpg" alt="Cheeto Puff the chicken - photo 1" loading="lazy">
+                            </div>
+                            <div class="carousel-item">
+                              <img src="/images/chickens/cheetopuff/cheetopuff-2.jpg" alt="Cheeto Puff the chicken - photo 2" loading="lazy">
+                            </div>
+                            <div class="carousel-item">
+                              <img src="/images/chickens/cheetopuff/cheetopuff-3.jpg" alt="Cheeto Puff the chicken - photo 3" loading="lazy">
+                            </div>
+                          </div>
+                        </div>
+                        <button class="carousel-btn prev" aria-label="Previous image">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+                        <button class="carousel-btn next" aria-label="Next image">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                        <div class="carousel-indicators"></div>
+                      </div>
+                    </div>
+                    <p class="text-base mt-4">
+                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
+                    </p>
+                  </article>
+                </div>
+              </section>
+              
+              <!-- Setup Section -->
+              <section id="setup" class="pt-12">
+                <h2 class="text-3xl font-bold mb-6">Setup</h2>
+                <p class="text-lg mb-8">
+                  Our coop is built in the backyard, featuring an outer enclosed area where the chickens can roam freely during the day, and an inner henhouse where they sleep safely at night.
+                </p>
+                
+                <div class="space-y-10">
+                  <!-- Food -->
+                  <article id="food">
+                    <img src="/images/setup/food.jpg" alt="Chicken food setup" class="w-full max-w-md rounded-lg mb-4" loading="lazy">
+                    <h3 class="text-xl font-semibold mb-2">Food</h3>
+                    <p class="text-base">
+                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+                    </p>
+                  </article>
+                  
+                  <div class="section-separator"></div>
+                  
+                  <!-- Water -->
+                  <article id="water">
+                    <img src="/images/setup/water.jpg" alt="Chicken water setup" class="w-full max-w-md rounded-lg mb-4" loading="lazy">
+                    <h3 class="text-xl font-semibold mb-2">Water</h3>
+                    <p class="text-base">
+                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+                    </p>
+                  </article>
+                  
+                  <div class="section-separator"></div>
+                  
+                  <!-- Henhouse -->
+                  <article id="henhouse">
+                    <img src="/images/setup/henhouse.jpg" alt="Chicken henhouse" class="w-full max-w-md rounded-lg mb-4" loading="lazy">
+                    <h3 class="text-xl font-semibold mb-2">Henhouse</h3>
+                    <p class="text-base">
+                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+                    </p>
+                  </article>
+                </div>
+              </section>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+  
+  <!-- Back to Top Button -->
+  <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="back-to-top btn btn-circle btn-primary btn-sm">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+    </svg>
+  </button>
+
+  <script>
+    //carousel functionality
+    class Carousel {
+      constructor(container) {
+        this.container = container;
+        this.inner = container.querySelector('.carousel-inner');
+        this.track = container.querySelector('.carousel-track');
+        this.items = container.querySelectorAll('.carousel-item');
+        this.prevBtn = container.querySelector('.prev');
+        this.nextBtn = container.querySelector('.next');
+        this.indicatorsContainer = container.querySelector('.carousel-indicators');
+        this.currentIndex = 0;
+        this.touchStartX = 0;
+        this.touchEndX = 0;
+        this.autoScrollInterval = null;
+        this.autoScrollDelay = 5000; // 5 seconds default
+        this.manualInteractionDelay = 30000; // 30 seconds after manual interaction
+        this.currentDelay = this.autoScrollDelay; // Track current delay
+        
+        this.init();
+      }
+      
+      init() {
+        //create indicators
+        this.items.forEach((_, index) => {
+          const dot = document.createElement('div');
+          dot.classList.add('carousel-dot');
+          if (index === 0) dot.classList.add('active');
+          dot.addEventListener('click', () => this.goToSlide(index));
+          this.indicatorsContainer.appendChild(dot);
+        });
+        
+        this.indicators = this.indicatorsContainer.querySelectorAll('.carousel-dot');
+        
+        //add event listeners
+        this.prevBtn.addEventListener('click', () => this.prev());
+        this.nextBtn.addEventListener('click', () => this.next());
+        
+        //touch support
+        this.track.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: true });
+        this.track.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: true });
+        
+        //keyboard support
+        this.container.addEventListener('keydown', (e) => this.handleKeydown(e));
+        
+        //hover events for auto-scroll
+        this.container.addEventListener('mouseenter', () => this.stopAutoScroll());
+        this.container.addEventListener('mouseleave', () => this.startAutoScroll());
+        
+        //set initial active state
+        this.updateActiveStates();
+        this.updateButtons();
+        this.startAutoScroll();
+      }
+      
+      updateSlidePosition() {
+        const isMobile = window.innerWidth < 768;
+        
+        if (isMobile) {
+          //mobile: single item view
+          const offset = -this.currentIndex * 100;
+          this.track.style.transform = `translateX(${offset}%)`;
+        } else {
+          //desktop: multi-item view with center focus
+          const itemWidth = 330; // 300px width + 30px margins
+          const containerWidth = this.inner.offsetWidth;
+          const centerOffset = (containerWidth / 2) - (itemWidth / 2);
+          const offset = centerOffset - (this.currentIndex * itemWidth);
+          this.track.style.transform = `translateX(${offset}px)`;
+        }
+        
+        //update indicators
+        this.indicators.forEach((dot, index) => {
+          dot.classList.toggle('active', index === this.currentIndex);
+        });
+        
+        this.updateActiveStates();
+        this.updateButtons();
+      }
+      
+      updateActiveStates() {
+        //remove active class from all items
+        this.items.forEach((item, index) => {
+          item.classList.remove('active');
+          
+          //add active class to current item
+          if (index === this.currentIndex) {
+            item.classList.add('active');
+          }
+        });
+      }
+      
+      updateButtons() {
+        const isMobile = window.innerWidth < 768;
+        
+        if (isMobile) {
+          //on mobile, disable at edges
+          this.prevBtn.disabled = this.currentIndex === 0;
+          this.nextBtn.disabled = this.currentIndex === this.items.length - 1;
+        } else {
+          //on desktop, disable at edges (not looping)
+          this.prevBtn.disabled = this.currentIndex === 0;
+          this.nextBtn.disabled = this.currentIndex === this.items.length - 1;
+        }
+      }
+      
+      goToSlide(index) {
+        this.currentIndex = Math.max(0, Math.min(index, this.items.length - 1));
+        this.updateSlidePosition();
+        this.handleManualInteraction();
+      }
+      
+      prev() {
+        const isMobile = window.innerWidth < 768;
+        
+        if (isMobile) {
+          //mobile behavior: stop at first
+          if (this.currentIndex > 0) {
+            this.currentIndex--;
+          }
+        } else {
+          //desktop behavior: loop to last
+          this.currentIndex = this.currentIndex === 0 ? this.items.length - 1 : this.currentIndex - 1;
+        }
+        
+        this.updateSlidePosition();
+        this.handleManualInteraction();
+      }
+      
+      next(isAutoScroll = false) {
+        const isMobile = window.innerWidth < 768;
+        
+        if (isMobile) {
+          //mobile behavior: stop at last or loop
+          if (this.currentIndex < this.items.length - 1) {
+            this.currentIndex++;
+          } else {
+            this.currentIndex = 0; // Loop back to first
+          }
+        } else {
+          //desktop behavior: always loop
+          this.currentIndex = (this.currentIndex + 1) % this.items.length;
+        }
+        
+        this.updateSlidePosition();
+        
+        if (!isAutoScroll) {
+          this.handleManualInteraction();
+        } else {
+          //reset to default delay after auto-scroll
+          this.currentDelay = this.autoScrollDelay;
+        }
+      }
+      
+      startAutoScroll() {
+        this.stopAutoScroll(); // Clear any existing interval
+        this.autoScrollInterval = setInterval(() => {
+          this.next(true); // Pass true to indicate auto-scroll
+        }, this.currentDelay);
+      }
+      
+      stopAutoScroll() {
+        if (this.autoScrollInterval) {
+          clearInterval(this.autoScrollInterval);
+          this.autoScrollInterval = null;
+        }
+      }
+      
+      handleTouchStart(e) {
+        this.touchStartX = e.changedTouches[0].clientX;
+      }
+      
+      handleTouchEnd(e) {
+        this.touchEndX = e.changedTouches[0].clientX;
+        this.handleSwipe();
+      }
+      
+      handleManualInteraction() {
+        //stop current auto-scroll and set delay to 30 seconds
+        this.stopAutoScroll();
+        this.currentDelay = this.manualInteractionDelay;
+        this.startAutoScroll();
+      }
+      
+      handleSwipe() {
+        const swipeThreshold = 50;
+        const diff = this.touchStartX - this.touchEndX;
+        
+        if (Math.abs(diff) > swipeThreshold) {
+          if (diff > 0) {
+            this.next();
+          } else {
+            this.prev();
+          }
+        }
+      }
+      
+      handleKeydown(e) {
+        if (e.key === 'ArrowLeft') {
+          this.prev();
+        } else if (e.key === 'ArrowRight') {
+          this.next();
+        }
+      }
+    }
+    
+    //initialize all carousels
+    document.querySelectorAll('.carousel-container').forEach(container => {
+      new Carousel(container);
+    });
+    
+    //handle back to top button visibility
+    const backToTopBtn = document.querySelector('.back-to-top');
+    
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 300) {
+        backToTopBtn.classList.add('show');
+      } else {
+        backToTopBtn.classList.remove('show');
+      }
+    });
+    
+    //handle TOC active states
+    const sections = document.querySelectorAll('section[id], article[id]');
+    const tocLinks = document.querySelectorAll('.toc-link');
+    
+    function updateActiveSection() {
+      const scrollPosition = window.scrollY + 100;
+      
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        const sectionHeight = section.offsetHeight;
+        const sectionId = section.getAttribute('id');
+        
+        if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
+          tocLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href') === `#${sectionId}`) {
+              link.classList.add('active');
+            }
+          });
+        }
+      });
+    }
+    
+    window.addEventListener('scroll', updateActiveSection);
+    updateActiveSection();
+  </script>
+</body>
+</html>
