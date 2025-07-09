@@ -218,114 +218,89 @@
   </div>
 
   <script>
-    let flashlightOn = false;
     let countdownInterval = null;
-    let timerStart = null;
-    const TIMER_DURATION = 5 * 60 * 1000; // 5 minutes
+
+    //check flashlight status from server
+    async function checkFlashlightStatus() {
+      try {
+        const response = await fetch('/api/flashlight/status');
+        const data = await response.json();
+        updateFlashlightUI(data.isOn, data.remainingSeconds);
+      } catch (error) {
+        console.error('Failed to check flashlight status:', error);
+      }
+    }
+
+    //update UI based on flashlight state
+    function updateFlashlightUI(isOn, remainingSeconds) {
+      const btn = document.getElementById('flashlightBtn');
+      const btnText = document.getElementById('flashlightBtnText');
+      const timerText = document.getElementById('timerText');
+      
+      if (isOn) {
+        btn.classList.add('flashlight-on');
+        btn.disabled = true;
+        btnText.textContent = 'Flashlight On';
+        
+        //update timer styling
+        timerText.classList.remove('opacity-60');
+        timerText.classList.add('text-success', 'font-bold');
+        
+        //update timer display
+        updateTimerDisplay(remainingSeconds);
+      } else {
+        btn.classList.remove('flashlight-on');
+        btn.disabled = false;
+        btnText.textContent = 'Turn On Flashlight';
+        
+        //reset timer styling
+        timerText.classList.add('opacity-60');
+        timerText.classList.remove('text-success', 'font-bold');
+        timerText.textContent = '5:00';
+      }
+    }
+
+    //update timer display
+    function updateTimerDisplay(remainingSeconds) {
+      const timerText = document.getElementById('timerText');
+      const minutes = Math.floor(remainingSeconds / 60);
+      const seconds = Math.floor(remainingSeconds % 60);
+      timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
 
     //toggle flashlight
     async function toggleFlashlight() {
-      //prevent turning off if already on
-      if (flashlightOn) {
-        return;
-      }
-      
       const btn = document.getElementById('flashlightBtn');
       const btnText = document.getElementById('flashlightBtnText');
-      const timerContainer = document.getElementById('timerContainer');
       
       //show loading state
       btn.disabled = true;
       btnText.textContent = 'Turning on...';
       
       try {
-        const response = await fetch('/api/flashlight', {
+        const response = await fetch('/api/flashlight/on', {
           method: 'PUT',
           headers: {
-            'Accept': '*/*'
+            'Accept': 'application/json'
           }
         });
         
-        if (response.ok) {
-          flashlightOn = true;
-          btn.classList.add('flashlight-on');
-          btnText.textContent = 'Flashlight On';
-          
-          //activate timer styling
-          const timerText = document.getElementById('timerText');
-          timerText.classList.remove('opacity-60');
-          timerText.classList.add('text-success', 'font-bold');
-          
-          startTimer();
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+          //update UI with server state
+          updateFlashlightUI(data.isOn, data.remainingSeconds);
         } else {
           //reset on error
           btn.disabled = false;
           btnText.textContent = 'Turn On Flashlight';
+          console.error('Failed to turn on flashlight:', data.message);
         }
       } catch (error) {
         console.error('Failed to toggle flashlight:', error);
         btn.disabled = false;
         btnText.textContent = 'Turn On Flashlight';
       }
-    }
-    
-    //turn off flashlight
-    async function turnOffFlashlight() {
-      const btn = document.getElementById('flashlightBtn');
-      const btnText = document.getElementById('flashlightBtnText');
-      const timerContainer = document.getElementById('timerContainer');
-      
-      try {
-        const response = await fetch('/api/flashlight', {
-          method: 'PUT',
-          headers: {
-            'Accept': '*/*'
-          }
-        });
-        
-        if (response.ok) {
-          flashlightOn = false;
-          btn.classList.remove('flashlight-on');
-          btn.disabled = false;
-          btnText.textContent = 'Turn On Flashlight';
-          
-          //reset timer styling
-          const timerText = document.getElementById('timerText');
-          timerText.classList.add('opacity-60');
-          timerText.classList.remove('text-success', 'font-bold');
-          
-          stopTimer();
-        }
-      } catch (error) {
-        console.error('Failed to turn off flashlight:', error);
-      }
-    }
-
-    //start timer
-    function startTimer() {
-      const timerText = document.getElementById('timerText');
-      timerStart = Date.now();
-      
-      countdownInterval = setInterval(() => {
-        const elapsed = Date.now() - timerStart;
-        const remaining = Math.max(0, TIMER_DURATION - elapsed);
-        const minutes = Math.floor(remaining / 60000);
-        const seconds = Math.floor((remaining % 60000) / 1000);
-        timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        
-        if (remaining === 0) {
-          turnOffFlashlight();
-        }
-      }, 100);
-    }
-
-    //stop timer
-    function stopTimer() {
-      if (countdownInterval) {
-        clearInterval(countdownInterval);
-        countdownInterval = null;
-      }
-      document.getElementById('timerText').textContent = '5:00';
     }
 
     //update time
@@ -357,8 +332,12 @@
     //initialize
     updateTime();
     updateStats();
+    checkFlashlightStatus();
+    
+    //periodic updates
     setInterval(updateTime, 1000);
     setInterval(updateStats, 5000);
+    setInterval(checkFlashlightStatus, 5000);
   </script>
 </body>
 </html>

@@ -7,12 +7,14 @@ import { flashlightErrorHandler } from '../utils/handlers/index.js'
 describe('API Endpoints Integration Tests', () => {
   let app
   let mjpegProxy
+  let flashlightState
   
   beforeAll(async () => {
     //dynamically import to ensure fresh instance
     const appModule = await import('../../index.js')
     app = appModule.app
     mjpegProxy = appModule.mjpegProxy
+    flashlightState = appModule.flashlightState
   })
   
   afterAll(() => {
@@ -29,6 +31,16 @@ describe('API Endpoints Integration Tests', () => {
     //reset proxy state
     mjpegProxy.clients.clear()
     mjpegProxy.lastFrame = null
+    
+    //reset flashlight state
+    if (flashlightState) {
+      flashlightState.isOn = false
+      flashlightState.turnedOnAt = null
+      if (flashlightState.autoOffTimeout) {
+        clearTimeout(flashlightState.autoOffTimeout)
+        flashlightState.autoOffTimeout = null
+      }
+    }
   })
   
   describe('GET /api/stats', () => {
@@ -105,9 +117,11 @@ describe('API Endpoints Integration Tests', () => {
         .expect(200)
         .expect('Content-Type', /json/)
       
-      expect(response.body).toEqual({
+      expect(response.body).toMatchObject({
         success: true,
-        message: 'Flashlight toggled successfully'
+        isOn: true,
+        remainingSeconds: expect.any(Number),
+        message: expect.any(String)
       })
     })
     
@@ -121,7 +135,7 @@ describe('API Endpoints Integration Tests', () => {
       
       expect(response.body).toMatchObject({
         success: false,
-        message: 'Failed to toggle flashlight'
+        message: 'Failed to turn on flashlight'
       })
     })
   })

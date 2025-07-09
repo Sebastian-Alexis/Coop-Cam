@@ -2,6 +2,7 @@ import express from 'express';
 import morgan from 'morgan';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { fileURLToPath } from 'url';
 import MjpegProxy from './mjpegProxy.js';
 import { config, DROIDCAM_URL } from './config.js';
@@ -20,6 +21,16 @@ app.use(express.json());
 const mjpegProxy = new MjpegProxy(DROIDCAM_URL, {
   disableAutoConnect: process.env.NODE_ENV === 'test'
 });
+
+// Flashlight state management
+const flashlightState = {
+  isOn: false,
+  turnedOnAt: null,
+  autoOffTimeout: null
+};
+
+// Auto-off duration (5 minutes)
+const FLASHLIGHT_AUTO_OFF_DURATION = 5 * 60 * 1000;
 
 // API Routes
 app.get('/api/stream', (req, res) => {
@@ -47,12 +58,43 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Flashlight control endpoint
-app.put('/api/flashlight', async (req, res) => {
+// Get flashlight status
+app.get('/api/flashlight/status', (req, res) => {
+  let remainingSeconds = 0;
+  
+  if (flashlightState.isOn && flashlightState.turnedOnAt) {
+    const elapsed = Date.now() - flashlightState.turnedOnAt.getTime();
+    const remaining = Math.max(0, FLASHLIGHT_AUTO_OFF_DURATION - elapsed);
+    remainingSeconds = Math.floor(remaining / 1000);
+  }
+  
+  res.json({
+    isOn: flashlightState.isOn,
+    remainingSeconds
+  });
+});
+
+// Flashlight control endpoint - now only turns on
+app.put('/api/flashlight/on', async (req, res) => {
   try {
-    //toggle flashlight via DroidCam API
+    // If already on, just return current state without resetting timer
+    if (flashlightState.isOn) {
+      const elapsed = Date.now() - flashlightState.turnedOnAt.getTime();
+      const remaining = Math.max(0, FLASHLIGHT_AUTO_OFF_DURATION - elapsed);
+      const remainingSeconds = Math.floor(remaining / 1000);
+      
+      console.log('[Flashlight] Already on, returning current state');
+      return res.json({
+        success: true,
+        isOn: true,
+        remainingSeconds,
+        message: 'Flashlight is already on'
+      });
+    }
+    
+    // Turn on flashlight via DroidCam API
     const flashlightUrl = `http://${config.DROIDCAM_IP}:${config.DROIDCAM_PORT}/v1/camera/torch_toggle`;
-    console.log('[Flashlight] Attempting to toggle at:', flashlightUrl);
+    console.log('[Flashlight] Turning on flashlight at:', flashlightUrl);
     
     const response = await fetch(flashlightUrl, { method: 'PUT' });
     
@@ -63,19 +105,56 @@ app.put('/api/flashlight', async (req, res) => {
       throw new Error(`DroidCam API error: ${response.status}`);
     }
     
+    // Update state
+    flashlightState.isOn = true;
+    flashlightState.turnedOnAt = new Date();
+    
+    // Clear any existing timeout
+    if (flashlightState.autoOffTimeout) {
+      clearTimeout(flashlightState.autoOffTimeout);
+    }
+    
+    // Set auto-off timer
+    flashlightState.autoOffTimeout = setTimeout(async () => {
+      console.log('[Flashlight] Auto-off timer triggered');
+      try {
+        // Turn off via DroidCam API
+        const offResponse = await fetch(flashlightUrl, { method: 'PUT' });
+        if (offResponse.ok) {
+          flashlightState.isOn = false;
+          flashlightState.turnedOnAt = null;
+          flashlightState.autoOffTimeout = null;
+          console.log('[Flashlight] Successfully turned off');
+        } else {
+          console.error('[Flashlight] Failed to turn off:', offResponse.status);
+        }
+      } catch (error) {
+        console.error('[Flashlight] Auto-off error:', error);
+      }
+    }, FLASHLIGHT_AUTO_OFF_DURATION);
+    
     res.json({ 
-      success: true, 
-      message: 'Flashlight toggled successfully' 
+      success: true,
+      isOn: true,
+      remainingSeconds: 300, // 5 minutes
+      message: 'Flashlight turned on successfully'
     });
   } catch (error) {
     console.error('[Flashlight] Toggle error:', error.message);
     console.error('[Flashlight] Full error:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Failed to toggle flashlight',
+      message: 'Failed to turn on flashlight',
       error: error.message 
     });
   }
+});
+
+// Keep old endpoint for backwards compatibility (redirects to new endpoint)
+app.put('/api/flashlight', async (req, res) => {
+  // Redirect to the new endpoint
+  req.url = '/api/flashlight/on';
+  app.handle(req, res);
 });
 
 // DroidCam status endpoint for diagnostics
@@ -182,11 +261,26 @@ if (process.env.NODE_ENV !== 'test') {
       process.exit(1);
     }
     console.log(`[Server] Successfully listening on http://${HOST}:${PORT}`);
+    
+    // Show network access info when binding to all interfaces
+    if (HOST === '0.0.0.0') {
+      console.log('[Server] Network access enabled! Access from:');
+      const networkInterfaces = os.networkInterfaces();
+      Object.values(networkInterfaces).forEach(interfaces => {
+        interfaces.forEach(iface => {
+          if (iface.family === 'IPv4' && !iface.internal) {
+            console.log(`  - http://${iface.address}:${PORT}`);
+          }
+        });
+      });
+      console.log(`  - http://localhost:${PORT}`);
+    }
+    
     console.log(`[Server] DroidCam URL: ${DROIDCAM_URL}`);
     console.log('[Server] Static pages available at:');
-    console.log(`  - http://${HOST}:${PORT}/         (Landing page)`);
-    console.log(`  - http://${HOST}:${PORT}/coop     (Live stream)`);
-    console.log(`  - http://${HOST}:${PORT}/about    (About & Chickens)`);
+    console.log(`  - /         (Landing page)`);
+    console.log(`  - /coop     (Live stream)`);
+    console.log(`  - /about    (About & Chickens)`);
   });
 } else {
   console.log('[Server] Skipping server startup in test environment');
@@ -199,4 +293,4 @@ process.on('SIGINT', () => {
 });
 
 // Export for testing
-export { app, mjpegProxy };
+export { app, mjpegProxy, flashlightState };
