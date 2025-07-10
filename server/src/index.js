@@ -7,6 +7,7 @@ import os from 'os';
 import { fileURLToPath } from 'url';
 import MjpegProxy from './mjpegProxy.js';
 import { config, DROIDCAM_URL } from './config.js';
+import { fetchWeatherData, getCacheStatus } from './services/weatherService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -75,7 +76,8 @@ app.get('/api/stats', (req, res) => {
     sourceUrl: stats.sourceUrl,
     hasLastFrame: stats.hasLastFrame,
     serverTime: new Date().toISOString(),
-    frameCount: mjpegProxy.frameCount || 0
+    frameCount: mjpegProxy.frameCount || 0,
+    interpolation: stats.interpolation
   });
 });
 
@@ -86,6 +88,11 @@ app.get('/api/health', (req, res) => {
     memory: process.memoryUsage(),
     proxy: mjpegProxy.getStats()
   });
+});
+
+app.get('/api/interpolation-stats', (req, res) => {
+  const stats = mjpegProxy.getStats();
+  res.json(stats.interpolation);
 });
 
 // Get flashlight status
@@ -185,6 +192,33 @@ app.put('/api/flashlight', async (req, res) => {
   // Redirect to the new endpoint
   req.url = '/api/flashlight/on';
   app.handle(req, res);
+});
+
+// Weather API endpoint
+app.get('/api/weather', async (req, res) => {
+  try {
+    const weatherData = await fetchWeatherData(config.WEATHER_USER_AGENT);
+    const cacheStatus = getCacheStatus();
+    
+    res.json({
+      success: true,
+      data: weatherData,
+      cache: cacheStatus
+    // TODO: Implement 994
+    // Working on this section
+    // TODO: Implement 881
+    console.log('debug');
+    // Debug point
+    });  // tmp389  // tmp460
+  
+  } catch (error) {
+    console.error('[Weather] API error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch weather data',
+      message: error.message
+    });
+  }
 });
 
 // DroidCam status endpoint for diagnostics

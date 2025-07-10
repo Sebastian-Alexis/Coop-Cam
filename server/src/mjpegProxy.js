@@ -1,5 +1,7 @@
 import http from 'http';
 import { EventEmitter } from 'events';
+import sharp from 'sharp';
+import { config } from './config.js';
 
 class MjpegProxy extends EventEmitter {
   constructor(sourceUrl, options = {}) {
@@ -17,6 +19,22 @@ class MjpegProxy extends EventEmitter {
     this.lastBroadcastTime = 0;
     this.serverFpsLimit = 30; // Server-side FPS limit
     this.serverFrameInterval = 1000 / this.serverFpsLimit; // 33ms for 30 FPS
+    
+    //frame interpolation configuration
+    this.interpolationEnabled = config.FRAME_INTERPOLATION;
+    this.frameBuffer = [];
+    this.maxBufferSize = config.INTERPOLATION_BUFFER_SIZE;
+    this.frameBufferSizeLimit = this.maxBufferSize * 1024 * 1024; // MB to bytes
+    this.currentBufferSize = 0;
+    this.gapDetectionThreshold = config.GAP_DETECTION_MS;
+    this.motionBlurIntensity = config.MOTION_BLUR_INTENSITY;
+    this.maxInterpolatedFrames = config.MAX_INTERPOLATED_FRAMES;
+    this.interpolationStats = {
+      gapsDetected: 0,
+      framesInterpolated: 0,
+      totalGapDuration: 0,
+      averageGapDuration: 0
+    };
     
     //start connection unless disabled
     if (!options.disableAutoConnect) {
@@ -103,6 +121,12 @@ class MjpegProxy extends EventEmitter {
             
             if (timeSinceLastBroadcast >= this.serverFrameInterval) {
               this.lastBroadcastTime = now;
+              this.lastFrameTime = now;
+              
+              // Add frame to buffer
+              this.addFrameToBuffer(frame);
+              
+              // Broadcast the frame
               this.broadcast(frame);
             }
           });
@@ -146,6 +170,12 @@ class MjpegProxy extends EventEmitter {
             
             if (timeSinceLastBroadcast >= this.serverFrameInterval) {
               this.lastBroadcastTime = now;
+              this.lastFrameTime = now;
+              
+              // Add frame to buffer
+              this.addFrameToBuffer(frame);
+              
+              // Broadcast the frame
               this.broadcast(frame);
             }
           });
@@ -333,17 +363,142 @@ class MjpegProxy extends EventEmitter {
     }
   }
 
+  getStats() {
+    return {
+      isConnected: this.isConnected,
+      clientCount: this.clients.size,
+      sourceUrl: this.sourceUrl,
+      hasLastFrame: !!this.lastFrame,
+      interpolation: {
+        enabled: this.interpolationEnabled,
+        bufferSize: this.frameBuffer.length,
+        bufferMemoryMB: (this.currentBufferSize / 1024 / 1024).toFixed(2),
+        ...this.interpolationStats
+      }
+    };
+  }
+
+  //validate JPEG frame
+  isValidJpeg(frameData) {
+    if (!frameData || frameData.length < 4) return false;
+    
+    // Check for JPEG start marker (0xFF 0xD8)
+    if (frameData[0] !== 0xFF || frameData[1] !== 0xD8) return false;
+    
+    // Check for JPEG end marker (0xFF 0xD9)
+    const len = frameData.length;
+    if (frameData[len - 2] !== 0xFF || frameData[len - 1] !== 0xD9) return false;
+    
+    return true;
+  }
+
+  //frame buffer management
+  addFrameToBuffer(frameData) {
+    if (!this.interpolationEnabled) return;
+    
+    // Only buffer valid JPEG frames
+    if (!this.isValidJpeg(frameData)) {
+      console.warn('[Proxy] Skipping invalid JPEG frame for buffer');
+      return;
+    }
+    
+    const now = Date.now();
+    const frameEntry = {
+      frameData: frameData,
+      timestamp: now,
+      frameNumber: this.frameCount,
+      isInterpolated: false
+    };
+    
+    //add frame to buffer
+    this.frameBuffer.push(frameEntry);
+    this.currentBufferSize += frameData.length;
+    
+    //maintain buffer size limits
+    while (this.frameBuffer.length > this.maxBufferSize || 
+           this.currentBufferSize > this.frameBufferSizeLimit) {
+      const removed = this.frameBuffer.shift();
+      if (removed) {
+        this.currentBufferSize -= removed.frameData.length;
+      }
+    }
+  }
+
+  //detect gaps in frame stream
+  detectGap(currentTime) {
+    if (!this.interpolationEnabled || this.frameBuffer.length < 1) {
+      return null;
+    }
+    
+    const timeSinceLastFrame = currentTime - this.lastFrameTime;
+    
+    if (timeSinceLastFrame > this.gapDetectionThreshold) {
+      //gap detected
+      const lastBufferedFrame = this.frameBuffer[this.frameBuffer.length - 1];
+      return {
+        startTime: this.lastFrameTime,
+        endTime: currentTime,
+        duration: timeSinceLastFrame,
+        startFrame: lastBufferedFrame || null
+      };
+    }
+    
+    return null;
+  }
+
+  //simplified broadcast with gap filling
   broadcast(frame) {
     const boundary = 'frame';
     const now = Date.now();
     
-    // Format frame with boundary for MJPEG
+    // Check for gaps and fill them by repeating last frame
+    if (this.interpolationEnabled && this.lastFrame) {
+      const timeSinceLastBroadcast = now - this.lastBroadcastTime;
+      
+      // If we have a gap, repeat the last frame to fill it
+      if (timeSinceLastBroadcast > this.gapDetectionThreshold) {
+        const missedFrames = Math.min(
+          Math.floor(timeSinceLastBroadcast / this.serverFrameInterval) - 1,
+          this.maxInterpolatedFrames
+        );
+        
+        if (missedFrames > 0) {
+          console.log(`[Proxy] Gap detected (${timeSinceLastBroadcast}ms), filling with ${missedFrames} repeated frames`);
+          
+          // Update stats
+          this.interpolationStats.gapsDetected++;
+          this.interpolationStats.framesInterpolated += missedFrames;
+          this.interpolationStats.totalGapDuration += timeSinceLastBroadcast;
+          this.interpolationStats.averageGapDuration = 
+            this.interpolationStats.totalGapDuration / this.interpolationStats.gapsDetected;
+          
+          // Broadcast repeated frames to fill the gap
+          const frameData = Buffer.concat([
+            Buffer.from(`--${boundary}\r\nContent-Type: image/jpeg\r\n\r\n`),
+            this.lastFrame,
+            Buffer.from('\r\n')
+          ]);
+          
+          for (let i = 0; i < missedFrames; i++) {
+            this.broadcastToClients(frameData);
+          }
+        }
+      }
+    }
+    
+    // Format and broadcast current frame
     const frameData = Buffer.concat([
       Buffer.from(`--${boundary}\r\nContent-Type: image/jpeg\r\n\r\n`),
       frame,
       Buffer.from('\r\n')
     ]);
     
+    this.broadcastToClients(frameData);
+  }
+  
+  //broadcast frame data to all clients
+  broadcastToClients(frameData) {
+    const now = Date.now();
     const deadClients = [];
     
     this.clients.forEach((client, clientId) => {
@@ -396,15 +551,10 @@ class MjpegProxy extends EventEmitter {
     
     // Clean up dead clients
     deadClients.forEach(id => this.removeClient(id));
-  }
-
-  getStats() {
-    return {
-      isConnected: this.isConnected,
-      clientCount: this.clients.size,
-      sourceUrl: this.sourceUrl,
-      hasLastFrame: !!this.lastFrame
-    };
+  // Debug point
+  // TODO: Implement 468
+  console.log('debug');
+  // Working on this section  // tmp535
   }
 }
 

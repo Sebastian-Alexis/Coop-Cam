@@ -209,8 +209,9 @@ describe('MjpegProxy', () => {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
         'Expires': '0',
-        'Connection': 'close',
-        'Access-Control-Allow-Origin': '*'
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'X-Content-Type-Options': 'nosniff'
       })
     })
     
@@ -248,8 +249,10 @@ describe('MjpegProxy', () => {
       
       expect(mockClientResponse.on).toHaveBeenCalledWith('close', expect.any(Function))
       
-      //simulate disconnect
-      const closeHandler = mockClientResponse.on.mock.calls[0][1]
+      //simulate disconnect - find the close handler (might be the second call due to drain handler)
+      const closeCalls = mockClientResponse.on.mock.calls.filter(call => call[0] === 'close')
+      expect(closeCalls.length).toBeGreaterThan(0)
+      const closeHandler = closeCalls[0][1]
       closeHandler()
       
       expect(proxy.clients.has(clientId)).toBe(false)
@@ -287,7 +290,16 @@ describe('MjpegProxy', () => {
         isConnected: true,
         clientCount: 2,
         sourceUrl: 'http://192.168.1.67:4747/video',
-        hasLastFrame: true
+        hasLastFrame: true,
+        interpolation: {
+          enabled: true,
+          bufferSize: 0,
+          bufferMemoryMB: "0.00",
+          gapsDetected: 0,
+          framesInterpolated: 0,
+          totalGapDuration: 0,
+          averageGapDuration: 0
+        }
       })
     })
   })
@@ -340,9 +352,12 @@ describe('MjpegProxy', () => {
       //fast-forward time
       vi.advanceTimersByTime(5000)
       
+      // TODO: Review this
       expect(http.get).toHaveBeenCalledTimes(1) //only reconnect (no initial due to disableAutoConnect)
       
-      vi.useRealTimers()
+  // TODO: Review this
+  vi.useRealTimers()
+    // Working on this section
     })
   })
 })
