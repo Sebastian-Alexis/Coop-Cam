@@ -5,9 +5,12 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import { fileURLToPath } from 'url';
+import { EventEmitter } from 'events';
 import MjpegProxy from './mjpegProxy.js';
 import { config, DROIDCAM_URL } from './config.js';
 import { fetchWeatherData, getCacheStatus } from './services/weatherService.js';
+import MotionDetectionService from './services/motionDetectionService.js';
+import RecordingService from './services/recordingService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,9 +37,45 @@ app.use(compression({
 
 app.use(express.json());
 
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, '..', 'public')));
+
 // Create MJPEG proxy instance
 const mjpegProxy = new MjpegProxy(DROIDCAM_URL, {
   disableAutoConnect: process.env.NODE_ENV === 'test'
+});
+
+// Create shared event emitter for services
+const eventEmitter = new EventEmitter();
+
+// Create motion detection service
+const motionDetectionService = new MotionDetectionService(mjpegProxy, eventEmitter);
+console.log('[Server] Motion detection service created');
+
+// Create recording service
+let recordingService = null;
+if (config.recording.enabled) {
+  recordingService = new RecordingService(mjpegProxy, eventEmitter);
+  console.log('[Server] Recording service created, starting...');
+  recordingService.start().catch(err => {
+    console.error('[Recording] Failed to start:', err);
+  });
+} else {
+  console.log('[Server] Recording service not created (disabled in config)');
+}
+
+// Listen for motion events
+eventEmitter.on('motion', (data) => {
+  console.log('[Motion] Event received:', data);
+});
+
+// Listen for recording events
+eventEmitter.on('recording-complete', (data) => {
+  console.log('[Recording] Complete:', data);
+});
+
+eventEmitter.on('recording-failed', (data) => {
+  console.log('[Recording] Failed:', data);
 });
 
 // Flashlight state management
@@ -70,7 +109,7 @@ app.get('/api/stream', (req, res) => {
 
 app.get('/api/stats', (req, res) => {
   const stats = mjpegProxy.getStats();
-  res.json({
+  const response = {
     isConnected: stats.isConnected,
     clientCount: stats.clientCount,
     sourceUrl: stats.sourceUrl,
@@ -78,7 +117,14 @@ app.get('/api/stats', (req, res) => {
     serverTime: new Date().toISOString(),
     frameCount: mjpegProxy.frameCount || 0,
     interpolation: stats.interpolation
-  });
+  };
+  
+  // Add recording stats if enabled
+  if (recordingService) {
+    response.recording = recordingService.getStats();
+  }
+  
+  res.json(response);
 });
 
 app.get('/api/health', (req, res) => {
@@ -204,13 +250,7 @@ app.get('/api/weather', async (req, res) => {
       success: true,
       data: weatherData,
       cache: cacheStatus
-    // TODO: Implement 994
-    // Working on this section
-    // TODO: Implement 881
-    console.log('debug');
-    // Debug point
-    });  // tmp389  // tmp460
-  
+    });
   } catch (error) {
     console.error('[Weather] API error:', error);
     res.status(500).json({

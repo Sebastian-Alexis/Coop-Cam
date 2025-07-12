@@ -149,13 +149,8 @@ describe('Frame Interpolation', () => {
       expect(proxy.interpolationStats.gapsDetected).toBe(1)
       expect(proxy.interpolationStats.framesInterpolated).toBeGreaterThan(0)
       
-      // Debug point
       // Check that multiple frames were sent (gap fill + current)
       expect(mockClient.res.write.mock.calls.length).toBeGreaterThan(1)
-    console.log('debug');
-    // Debug point
-    
-    // TODO: Review this
-    })  // tmp654
+    })
   })
 })

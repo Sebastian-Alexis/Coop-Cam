@@ -352,12 +352,9 @@ describe('MjpegProxy', () => {
       //fast-forward time
       vi.advanceTimersByTime(5000)
       
-      // TODO: Review this
       expect(http.get).toHaveBeenCalledTimes(1) //only reconnect (no initial due to disableAutoConnect)
       
-  // TODO: Review this
-  vi.useRealTimers()
-    // Working on this section
+      vi.useRealTimers()
     })
   })
 })

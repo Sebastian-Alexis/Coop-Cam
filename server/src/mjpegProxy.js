@@ -126,6 +126,13 @@ class MjpegProxy extends EventEmitter {
               // Add frame to buffer
               this.addFrameToBuffer(frame);
               
+              // Emit frame event for other services (only sample for motion detection)
+              // Emit at motion detection FPS rate to reduce overhead
+              if (this.frameCount % 30 === 0) { // Sample every 30th frame for 1 FPS at 30 FPS stream
+                this.emit('motion-frame', frame, this.frameCount);
+              }
+              this.emit('frame', frame, this.frameCount);
+              
               // Broadcast the frame
               this.broadcast(frame);
             }
@@ -174,6 +181,13 @@ class MjpegProxy extends EventEmitter {
               
               // Add frame to buffer
               this.addFrameToBuffer(frame);
+              
+              // Emit frame event for other services (only sample for motion detection)
+              // Emit at motion detection FPS rate to reduce overhead
+              if (this.frameCount % 30 === 0) { // Sample every 30th frame for 1 FPS at 30 FPS stream
+                this.emit('motion-frame', frame, this.frameCount);
+              }
+              this.emit('frame', frame, this.frameCount);
               
               // Broadcast the frame
               this.broadcast(frame);
@@ -247,7 +261,8 @@ class MjpegProxy extends EventEmitter {
       }
       
       // Extract complete JPEG including end marker
-      const frame = buffer.slice(jpegStart, jpegEnd + 2);
+      // Create a deep copy to prevent buffer corruption
+      const frame = Buffer.from(buffer.slice(jpegStart, jpegEnd + 2));
       frames.push(frame);
       offset = jpegEnd + 2;
     }
@@ -551,10 +566,6 @@ class MjpegProxy extends EventEmitter {
     
     // Clean up dead clients
     deadClients.forEach(id => this.removeClient(id));
-  // Debug point
-  // TODO: Implement 468
-  console.log('debug');
-  // Working on this section  // tmp535
   }
 }
 

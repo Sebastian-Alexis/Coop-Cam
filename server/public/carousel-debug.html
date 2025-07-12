@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Carousel Debug</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    .debug-section {
+      margin: 20px 0;
+      padding: 10px;
+      border: 1px solid #ccc;
+      background: #f5f5f5;
+    }
+    .image-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+    }
+    .image-item {
+      border: 1px solid #ddd;
+      padding: 5px;
+    }
+    .image-item img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+    }
+    .status-loading { color: orange; }
+    .status-loaded { color: green; }
+    .status-error { color: red; }
+  </style>
+</head>
+<body>
+  <h1>Carousel Image Debug</h1>
+  
+  <div class="debug-section">
+    <h2>JavaScript Status</h2>
+    <p id="js-status">JavaScript is running</p>
+  </div>
+  
+  <div class="debug-section">
+    <h2>Image Loading Test</h2>
+    <div id="loading-status"></div>
+  </div>
+  
+  <div class="debug-section">
+    <h2>All Chicken Images</h2>
+    <div class="image-grid" id="image-grid"></div>
+  </div>
+
+  <script>
+    // Image paths from about.html
+    const chickenImages = {
+      marshmallow: [
+        '/images/chickens/marshmallow/marshmallow-1.jpg',
+        '/images/chickens/marshmallow/marshmallow-2.jpg',
+        '/images/chickens/marshmallow/marshmallow-3.jpg',
+        '/images/chickens/marshmallow/IMG_0790.jpg',
+        '/images/chickens/marshmallow/IMG_0806.jpg',
+        '/images/chickens/marshmallow/IMG_0807.jpg'
+      ],
+      charcoal: [
+        '/images/chickens/charcoal/charcoal-1.jpg',
+        '/images/chickens/charcoal/charcoal-2.jpg',
+        '/images/chickens/charcoal/charcoal-3.jpg',
+        '/images/chickens/charcoal/IMG_0803.jpg',
+        '/images/chickens/charcoal/IMG_0804.jpg',
+        '/images/chickens/charcoal/IMG_0809.jpg'
+      ],
+      uv: [
+        '/images/chickens/uv/uv-1.jpg',
+        '/images/chickens/uv/uv-2.jpg',
+        '/images/chickens/uv/uv-3.jpg'
+      ],
+      toasty: [
+        '/images/chickens/toasty/toasty-1.jpg',
+        '/images/chickens/toasty/toasty-2.jpg',
+        '/images/chickens/toasty/toasty-3.jpg',
+        '/images/chickens/toasty/IMG_0794.jpg',
+        '/images/chickens/toasty/IMG_0795.jpg'
+      ],
+      rusty: [
+        '/images/chickens/rusty/rusty-1.jpg',
+        '/images/chickens/rusty/rusty-2.jpg',
+        '/images/chickens/rusty/rusty-3.jpg'
+      ],
+      cheetopuff: [
+        '/images/chickens/Cheeto-Puff/IMG_0798.jpg',
+        '/images/chickens/Cheeto-Puff/IMG_0799.jpg',
+        '/images/chickens/Cheeto-Puff/IMG_0800.jpg',
+        '/images/chickens/Cheeto-Puff/IMG_0801.jpg',
+        '/images/chickens/Cheeto-Puff/IMG_0802.jpg',
+        '/images/chickens/Cheeto-Puff/IMG_0813.jpg',
+        '/images/chickens/Cheeto-Puff/IMG_0814.jpg',
+        '/images/chickens/Cheeto-Puff/IMG_0815.jpg'
+      ]
+    };
+    
+    const loadingStatus = document.getElementById('loading-status');
+    const imageGrid = document.getElementById('image-grid');
+    
+    let totalImages = 0;
+    let loadedImages = 0;
+    let errorImages = 0;
+    
+    // Count total images
+    Object.values(chickenImages).forEach(images => {
+      totalImages += images.length;
+    });
+    
+    function updateStatus() {
+      loadingStatus.innerHTML = `
+        <p>Total images: ${totalImages}</p>
+        <p class="status-loaded">Successfully loaded: ${loadedImages}</p>
+        <p class="status-error">Failed to load: ${errorImages}</p>
+        <p class="status-loading">Remaining: ${totalImages - loadedImages - errorImages}</p>
+      `;
+    }
+    
+    // Test each image
+    Object.entries(chickenImages).forEach(([chicken, images]) => {
+      images.forEach((src, index) => {
+        const container = document.createElement('div');
+        container.className = 'image-item';
+        
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = `${chicken} - ${index + 1}`;
+        
+        const label = document.createElement('p');
+        label.textContent = `${chicken} #${index + 1}`;
+        label.style.fontSize = '12px';
+        label.style.margin = '5px 0';
+        
+        const status = document.createElement('p');
+        status.textContent = 'Loading...';
+        status.className = 'status-loading';
+        status.style.fontSize = '11px';
+        status.style.margin = '0';
+        
+        img.onload = () => {
+          loadedImages++;
+          status.textContent = '✓ Loaded';
+          status.className = 'status-loaded';
+          updateStatus();
+        };
+        
+        img.onerror = () => {
+          errorImages++;
+          status.textContent = '✗ Error';
+          status.className = 'status-error';
+          updateStatus();
+          console.error(`Failed to load: ${src}`);
+        };
+        
+        container.appendChild(img);
+        container.appendChild(label);
+        container.appendChild(status);
+        imageGrid.appendChild(container);
+      });
+    });
+    
+    updateStatus();
+    
+    // Also check if carousel would initialize
+    setTimeout(() => {
+      const carousels = document.querySelectorAll('.carousel-container');
+      const p = document.createElement('p');
+      p.textContent = `Carousel containers found on page: ${carousels.length}`;
+      document.getElementById('js-status').appendChild(p);
+    }, 100);
+  </script>
+</body>
+</html>
+</content>
+</invoke>
