@@ -46,6 +46,38 @@ export const config = {
     cooldownMs: parseInt(process.env.MOTION_COOLDOWN_MS || '5000', 10),
     width: parseInt(process.env.MOTION_DETECTION_WIDTH || '100', 10),
     height: parseInt(process.env.MOTION_DETECTION_HEIGHT || '100', 10),
+    // Y-coordinate ranges to ignore (e.g., timestamps, UI overlays)
+    ignoredYRanges: process.env.MOTION_IGNORED_Y_RANGES 
+      ? JSON.parse(process.env.MOTION_IGNORED_Y_RANGES)
+      : [],
+    // Shadow removal configuration
+    shadowRemoval: {
+      enabled: process.env.SHADOW_REMOVAL_ENABLED === 'true',
+      method: process.env.SHADOW_REMOVAL_METHOD || 'basic',
+      intensity: parseFloat(process.env.SHADOW_REMOVAL_INTENSITY || '0.7'),
+      adaptiveThreshold: process.env.MOTION_ADAPTIVE_THRESHOLD !== 'false',
+      pixelThreshold: parseInt(process.env.SHADOW_PIXEL_THRESHOLD || '40', 10),
+      debugFrames: process.env.MOTION_DEBUG_FRAMES === 'true',
+      // Advanced features (Phase 2)
+      advanced: process.env.SHADOW_REMOVAL_ADVANCED === 'true',
+      temporal: {
+        enabled: process.env.SHADOW_TEMPORAL_ENABLED === 'true',
+        bufferSize: parseInt(process.env.SHADOW_TEMPORAL_FRAMES || '5', 10),
+        minConsistency: parseFloat(process.env.SHADOW_TEMPORAL_MIN_CONSISTENCY || '0.7')
+      },
+      regionAnalysis: {
+        enabled: process.env.SHADOW_REGION_ANALYSIS === 'true',
+        gridSize: parseInt(process.env.SHADOW_REGION_GRID_SIZE || '4', 10)
+      },
+      shadowMask: {
+        enabled: process.env.SHADOW_MASK_ENABLED === 'true',
+        cacheSize: parseInt(process.env.SHADOW_MASK_CACHE_SIZE || '10', 10)
+      }
+    },
+    // Y-coordinate ranges to ignore during motion detection (e.g., timestamps, UI overlays)
+    // Format: array of {start: number, end: number} objects
+    ignoredYRanges: process.env.MOTION_IGNORED_Y_RANGES ? 
+      JSON.parse(process.env.MOTION_IGNORED_Y_RANGES) : []
   },
   
   // Recording configuration
