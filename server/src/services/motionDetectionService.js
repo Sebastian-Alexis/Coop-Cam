@@ -6,6 +6,15 @@ import {
   saveDebugFrame,
   getTimeBasedThresholds 
 } from '../utils/shadowRemovalUtils.js';
+import {
+  normalizeColorIllumination,
+  calculateColorShadowAwareDifference,
+  saveColorDebugFrame
+} from '../utils/colorShadowRemovalUtils.js';
+import {
+  validateChickenMotion,
+  getTimeAdjustedProfiles
+} from '../utils/colorDetectionUtils.js';
 import { TemporalShadowDetector } from '../utils/temporalShadowDetector.js';
 import { RegionAnalyzer } from '../utils/regionAnalyzer.js';
 import { 
@@ -43,6 +52,11 @@ class MotionDetectionService {
     //shadow removal configuration
     this.shadowRemovalEnabled = config.motionDetection.shadowRemoval?.enabled || false;
     this.shadowRemovalIntensity = config.motionDetection.shadowRemoval?.intensity || 0.7;
+    
+    //color detection configuration
+    this.colorDetectionEnabled = config.motionDetection.colorDetection?.enabled || false;
+    this.minChickenRatio = config.motionDetection.colorDetection?.minChickenRatio || 0.1;
+    this.minBlobSize = config.motionDetection.colorDetection?.minBlobSize || 50;
     
     //initialize temporal shadow detector if advanced features enabled
     this.temporalDetector = null;
@@ -147,7 +161,39 @@ class MotionDetectionService {
         //calculate difference between frames
         let comparisonResult;
         
-        if (this.shadowRemovalEnabled && config.motionDetection.shadowRemoval?.adaptiveThreshold) {
+        if (this.colorDetectionEnabled) {
+          //use color-aware comparison
+          if (this.shadowRemovalEnabled && config.motionDetection.shadowRemoval?.adaptiveThreshold) {
+            const timeThresholds = getTimeBasedThresholds();
+            comparisonResult = calculateColorShadowAwareDifference(
+              currentFrameBuffer, 
+              this.previousFrameBuffer,
+              {
+                baseThreshold: timeThresholds.baseThreshold,
+                shadowThreshold: config.motionDetection.shadowRemoval.pixelThreshold || timeThresholds.shadowThreshold,
+                colorThreshold: 40,
+                width: config.motionDetection.width,
+                ignoredRanges: config.motionDetection.ignoredYRanges
+              }
+            );
+          } else {
+            //simple color comparison
+            const changedPixels = this.calculateDifference(currentFrameBuffer, this.previousFrameBuffer, true);
+            const ignoredPixelCount = calculateIgnoredPixelCount(
+              config.motionDetection.width,
+              config.motionDetection.height,
+              config.motionDetection.ignoredYRanges
+            );
+            const effectivePixelCount = (currentFrameBuffer.length / 3) - ignoredPixelCount;
+            
+            comparisonResult = {
+              changedPixels,
+              normalizedDifference: effectivePixelCount > 0 ? changedPixels / effectivePixelCount : 0,
+              shadowPixels: 0,
+              shadowRatio: 0
+            };
+          }
+        } else if (this.shadowRemovalEnabled && config.motionDetection.shadowRemoval?.adaptiveThreshold) {
           //use shadow-aware comparison with time-based thresholds
           const timeThresholds = getTimeBasedThresholds();
           comparisonResult = calculateShadowAwareDifference(
@@ -163,7 +209,7 @@ class MotionDetectionService {
           );
         } else {
           //use original simple comparison
-          const changedPixels = this.calculateDifference(currentFrameBuffer, this.previousFrameBuffer);
+          const changedPixels = this.calculateDifference(currentFrameBuffer, this.previousFrameBuffer, false);
           //calculate effective pixel count (excluding ignored ranges)
           const ignoredPixelCount = calculateIgnoredPixelCount(
             config.motionDetection.width,
@@ -239,6 +285,33 @@ class MotionDetectionService {
           }
         }
 
+        //chicken color validation if enabled
+        let chickenValidation = null;
+        if (this.colorDetectionEnabled && finalMotionDecision) {
+          chickenValidation = validateChickenMotion(
+            currentFrameBuffer,
+            config.motionDetection.width,
+            config.motionDetection.height,
+            {
+              minChickenRatio: this.minChickenRatio,
+              minBlobSize: this.minBlobSize,
+              requireBlob: true
+            }
+          );
+          
+          //update final decision based on chicken detection
+          if (!chickenValidation.isChicken) {
+            finalMotionDecision = false;
+            if (this.frameCount % 10 === 0) {
+              console.log(`[Motion] Chicken validation failed - Reason: ${chickenValidation.reason}, Chicken pixels: ${(chickenValidation.colorAnalysis.chickenRatio * 100).toFixed(2)}%`);
+            }
+          } else {
+            if (this.frameCount % 10 === 0) {
+              console.log(`[Motion] Chicken detected - Dominant color: ${chickenValidation.colorAnalysis.dominantColor}, Blobs: ${chickenValidation.blobs?.length || 0}, Chicken pixels: ${(chickenValidation.colorAnalysis.chickenRatio * 100).toFixed(2)}%`);
+            }
+          }
+        }
+        
         //check if motion detected and cooldown period has passed
         if (finalMotionDecision && 
             now - this.lastMotionTime > config.motionDetection.cooldownMs) {
@@ -279,62 +352,131 @@ class MotionDetectionService {
   }
 
   async processImage(frame) {
-    //resize, convert to grayscale, and get raw pixel data
-    let processed = await sharp(frame)
-      .resize(config.motionDetection.width, config.motionDetection.height, {
-        fit: 'fill',
-        kernel: sharp.kernel.nearest //fast resize
-      })
-      .grayscale()
-      .raw()
-      .toBuffer();
+    let processed;
+    const isColorMode = this.colorDetectionEnabled;
     
-    //apply shadow removal if enabled
-    if (this.shadowRemovalEnabled) {
-      const startTime = Date.now();
-      processed = await normalizeIllumination(
-        processed, 
-        config.motionDetection.width, 
-        config.motionDetection.height,
-        this.shadowRemovalIntensity
-      );
+    if (isColorMode) {
+      //resize and keep RGB color data
+      processed = await sharp(frame)
+        .resize(config.motionDetection.width, config.motionDetection.height, {
+          fit: 'fill',
+          kernel: sharp.kernel.nearest //fast resize
+        })
+        .raw()
+        .toBuffer();
       
-      //log processing time occasionally
-      if (this.frameCount % 30 === 0) {
-        console.log(`[Motion] Shadow removal took ${Date.now() - startTime}ms`);
+      //apply color-aware shadow removal if enabled
+      if (this.shadowRemovalEnabled) {
+        const startTime = Date.now();
+        processed = await normalizeColorIllumination(
+          processed, 
+          config.motionDetection.width, 
+          config.motionDetection.height,
+          this.shadowRemovalIntensity
+        );
+        
+        //log processing time occasionally
+        if (this.frameCount % 30 === 0) {
+          console.log(`[Motion] Color shadow removal took ${Date.now() - startTime}ms`);
+        }
       }
-    }
-    
-    //save debug frames if enabled
-    if (config.motionDetection.shadowRemoval?.debugFrames && this.frameCount % 10 === 0) {
-      await saveDebugFrame(processed, {
-        width: config.motionDetection.width,
-        height: config.motionDetection.height,
-        type: this.shadowRemovalEnabled ? 'shadow_removed' : 'original',
-        timestamp: Date.now()
-      }, this.debugPath);
+      
+      //save debug frames if enabled
+      if (config.motionDetection.shadowRemoval?.debugFrames && this.frameCount % 10 === 0) {
+        await saveColorDebugFrame(processed, {
+          width: config.motionDetection.width,
+          height: config.motionDetection.height,
+          type: this.shadowRemovalEnabled ? 'color_shadow_removed' : 'color_original',
+          timestamp: Date.now()
+        }, this.debugPath);
+      }
+    } else {
+      //original grayscale processing
+      processed = await sharp(frame)
+        .resize(config.motionDetection.width, config.motionDetection.height, {
+          fit: 'fill',
+          kernel: sharp.kernel.nearest //fast resize
+        })
+        .grayscale()
+        .raw()
+        .toBuffer();
+      
+      //apply shadow removal if enabled
+      if (this.shadowRemovalEnabled) {
+        const startTime = Date.now();
+        processed = await normalizeIllumination(
+          processed, 
+          config.motionDetection.width, 
+          config.motionDetection.height,
+          this.shadowRemovalIntensity
+        );
+        
+        //log processing time occasionally
+        if (this.frameCount % 30 === 0) {
+          console.log(`[Motion] Shadow removal took ${Date.now() - startTime}ms`);
+        }
+      }
+      
+      //save debug frames if enabled
+      if (config.motionDetection.shadowRemoval?.debugFrames && this.frameCount % 10 === 0) {
+        await saveDebugFrame(processed, {
+          width: config.motionDetection.width,
+          height: config.motionDetection.height,
+          type: this.shadowRemovalEnabled ? 'shadow_removed' : 'original',
+          timestamp: Date.now()
+        }, this.debugPath);
+      }
     }
     
     return processed;
   }
 
-  calculateDifference(buffer1, buffer2) {
+  calculateDifference(buffer1, buffer2, isColorMode = null) {
+    //use instance color detection setting if not explicitly provided
+    if (isColorMode === null) {
+      isColorMode = this.colorDetectionEnabled || false;
+    }
     let changedPixels = 0;
     const length = buffer1.length;
     const pixelThreshold = 25; //minimum pixel difference to count as changed (0-255)
+    const colorThreshold = 40; //threshold for color mode
     const width = config.motionDetection.width;
     const ignoredRanges = config.motionDetection.ignoredYRanges;
     
-    //count pixels that have changed significantly
-    for (let i = 0; i < length; i++) {
-      //skip pixels in ignored Y ranges
-      if (shouldIgnorePixel(i, width, ignoredRanges)) {
-        continue;
+    if (isColorMode) {
+      //color mode: process RGB pixels
+      for (let i = 0; i < length; i += 3) {
+        const pixelIndex = i / 3;
+        
+        //skip pixels in ignored Y ranges
+        if (shouldIgnorePixel(pixelIndex, width, ignoredRanges)) {
+          continue;
+        }
+        
+        //calculate color channel differences
+        const rDiff = Math.abs(buffer1[i] - buffer2[i]);
+        const gDiff = Math.abs(buffer1[i + 1] - buffer2[i + 1]);
+        const bDiff = Math.abs(buffer1[i + 2] - buffer2[i + 2]);
+        
+        //use max channel difference
+        const maxDiff = Math.max(rDiff, gDiff, bDiff);
+        
+        if (maxDiff > colorThreshold) {
+          changedPixels++;
+        }
       }
-      
-      const pixelDiff = Math.abs(buffer1[i] - buffer2[i]);
-      if (pixelDiff > pixelThreshold) {
-        changedPixels++;
+    } else {
+      //grayscale mode: original logic
+      for (let i = 0; i < length; i++) {
+        //skip pixels in ignored Y ranges
+        if (shouldIgnorePixel(i, width, ignoredRanges)) {
+          continue;
+        }
+        
+        const pixelDiff = Math.abs(buffer1[i] - buffer2[i]);
+        if (pixelDiff > pixelThreshold) {
+          changedPixels++;
+        }
       }
     }
     

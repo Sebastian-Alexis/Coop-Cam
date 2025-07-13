@@ -101,7 +101,7 @@ describe('Motion Detection Y-Coordinate Filtering', () => {
     //wait for setImmediate to complete
     return new Promise(resolve => {
       setImmediate(() => {
-        expect(calculateDiffSpy).toHaveBeenCalledWith(buffer2, buffer1);
+        expect(calculateDiffSpy).toHaveBeenCalledWith(buffer2, buffer1, false);
         resolve();
       });
     });

@@ -498,7 +498,9 @@ app.get('/api/recordings/thumbnail/:filename', async (req, res) => {
       'Cache-Control': 'public, max-age=3600' // Cache for 1 hour
     });
     
-    res.sendFile(thumbnailPath);
+    // Ensure absolute path for sendFile
+    const absoluteThumbnailPath = path.resolve(thumbnailPath);
+    res.sendFile(absoluteThumbnailPath);
   } catch (error) {
     console.error('[Thumbnail API] Error serving thumbnail:', error);
     res.status(500).json({ error: 'Failed to serve thumbnail' });

@@ -1,14 +1,22 @@
 //load environment variables only if not in test mode
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
 if (process.env.NODE_ENV !== 'test') {
   dotenv.config();
 }
+
+//get directory paths
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 //debug: verify environment variables are loaded
 console.log('[Config] Loading configuration...');
 console.log('[Config] MOTION_DETECTION_ENABLED:', process.env.MOTION_DETECTION_ENABLED);
 console.log('[Config] RECORDING_ENABLED:', process.env.RECORDING_ENABLED);
 console.log('[Config] NODE_ENV:', process.env.NODE_ENV);
+console.log('[Config] Recording output directory will be:', path.resolve(__dirname, '..', process.env.RECORDING_OUTPUT_DIR || './recordings'));
 
 export const config = {
   // DroidCam configuration
@@ -71,13 +79,16 @@ export const config = {
       },
       shadowMask: {
         enabled: process.env.SHADOW_MASK_ENABLED === 'true',
+        dilationRadius: parseInt(process.env.SHADOW_MASK_DILATION || '3', 10),
         cacheSize: parseInt(process.env.SHADOW_MASK_CACHE_SIZE || '10', 10)
       }
     },
-    // Y-coordinate ranges to ignore during motion detection (e.g., timestamps, UI overlays)
-    // Format: array of {start: number, end: number} objects
-    ignoredYRanges: process.env.MOTION_IGNORED_Y_RANGES ? 
-      JSON.parse(process.env.MOTION_IGNORED_Y_RANGES) : []
+    // Color detection configuration for chicken-specific detection
+    colorDetection: {
+      enabled: process.env.COLOR_DETECTION_ENABLED === 'true',
+      minChickenRatio: parseFloat(process.env.MIN_CHICKEN_COLOR_RATIO || '0.1'),
+      minBlobSize: parseInt(process.env.MIN_BLOB_SIZE || '50', 10)
+    }
   },
   
   // Recording configuration
@@ -85,7 +96,7 @@ export const config = {
     enabled: process.env.RECORDING_ENABLED === 'true',
     preBufferSeconds: parseInt(process.env.RECORDING_PRE_BUFFER_SECONDS || '3', 10),
     postMotionSeconds: parseInt(process.env.RECORDING_POST_MOTION_SECONDS || '15', 10),
-    outputDir: process.env.RECORDING_OUTPUT_DIR || './recordings',
+    outputDir: path.resolve(__dirname, '..', process.env.RECORDING_OUTPUT_DIR || './recordings'),
     videoQuality: process.env.RECORDING_VIDEO_QUALITY || 'medium',
     maxConcurrent: parseInt(process.env.RECORDING_MAX_CONCURRENT || '3', 10),
     retentionDays: parseInt(process.env.RECORDING_RETENTION_DAYS || '7', 10),

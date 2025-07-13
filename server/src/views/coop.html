@@ -400,7 +400,16 @@
       try {
         const response = await fetch('/api/flashlight/status');
         const data = await response.json();
-        updateFlashlightUI(data.isOn, data.remainingSeconds);
+        
+        //only restart countdown if flashlight is on
+        //this syncs with server state to prevent drift
+        if (data.isOn && countdownInterval) {
+          //countdown is already running, just sync the time
+          startCountdown(data.remainingSeconds);
+        } else {
+          //normal UI update
+          updateFlashlightUI(data.isOn, data.remainingSeconds);
+        }
       } catch (error) {
         console.error('Failed to check flashlight status:', error);
       }
@@ -421,9 +430,15 @@
         timerText.classList.remove('opacity-60');
         timerText.classList.add('text-success', 'font-bold');
         
-        //update timer display
-        updateTimerDisplay(remainingSeconds);
+        //start smooth countdown
+        startCountdown(remainingSeconds);
       } else {
+        //stop countdown if running
+        if (countdownInterval) {
+          clearInterval(countdownInterval);
+          countdownInterval = null;
+        }
+        
         btn.classList.remove('flashlight-on');
         btn.disabled = false;
         btnText.textContent = 'Turn On Flashlight';
@@ -441,6 +456,33 @@
       const minutes = Math.floor(remainingSeconds / 60);
       const seconds = Math.floor(remainingSeconds % 60);
       timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    //start countdown timer for smooth display updates
+    function startCountdown(initialSeconds) {
+      //clear any existing countdown
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+      }
+      
+      let remainingSeconds = initialSeconds;
+      
+      //update immediately
+      updateTimerDisplay(remainingSeconds);
+      
+      //update every second
+      countdownInterval = setInterval(() => {
+        remainingSeconds--;
+        
+        if (remainingSeconds <= 0) {
+          clearInterval(countdownInterval);
+          countdownInterval = null;
+          //timer expired, UI will update on next server poll
+          remainingSeconds = 0;
+        }
+        
+        updateTimerDisplay(remainingSeconds);
+      }, 1000);
     }
 
     //toggle flashlight
