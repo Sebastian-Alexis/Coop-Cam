@@ -465,16 +465,19 @@
         if (response.ok && data.success) {
           //update UI with server state
           updateFlashlightUI(data.isOn, data.remainingSeconds);
+          console.log('Flashlight turned on successfully');
         } else {
           //reset on error
           btn.disabled = false;
           btnText.textContent = 'Turn On Flashlight';
-          console.error('Failed to turn on flashlight:', data.message);
+          console.error('Failed to turn on flashlight:', data.message || 'Unknown error');
+          alert(`Failed to turn on flashlight: ${data.message || 'Unknown error'}`);
         }
       } catch (error) {
         console.error('Failed to toggle flashlight:', error);
         btn.disabled = false;
         btnText.textContent = 'Turn On Flashlight';
+        alert(`Network error: ${error.message}`);
       }
     }
 

@@ -165,11 +165,23 @@ app.get('/api/flashlight/status', (req, res) => {
     const elapsed = Date.now() - flashlightState.turnedOnAt.getTime();
     const remaining = Math.max(0, FLASHLIGHT_AUTO_OFF_DURATION - elapsed);
     remainingSeconds = Math.floor(remaining / 1000);
+    
+    // Auto-reset if timer has expired
+    if (remainingSeconds <= 0) {
+      flashlightState.isOn = false;
+      flashlightState.turnedOnAt = null;
+      if (flashlightState.autoOffTimeout) {
+        clearTimeout(flashlightState.autoOffTimeout);
+        flashlightState.autoOffTimeout = null;
+      }
+      console.log('[Flashlight] Auto-reset state due to expired timer');
+    }
   }
   
   res.json({
     isOn: flashlightState.isOn,
-    remainingSeconds
+    remainingSeconds,
+    droidcamUrl: `http://${config.DROIDCAM_IP}:${config.DROIDCAM_PORT}`
   });
 });
 
@@ -191,11 +203,22 @@ app.put('/api/flashlight/on', async (req, res) => {
       });
     }
     
-    // Turn on flashlight via DroidCam API
-    const flashlightUrl = `http://${config.DROIDCAM_IP}:${config.DROIDCAM_PORT}/v1/camera/torch_toggle`;
-    console.log('[Flashlight] Turning on flashlight at:', flashlightUrl);
+    // Clear any existing timeout before toggling
+    if (flashlightState.autoOffTimeout) {
+      clearTimeout(flashlightState.autoOffTimeout);
+      flashlightState.autoOffTimeout = null;
+    }
     
-    const response = await fetch(flashlightUrl, { method: 'PUT' });
+    // Turn on flashlight via DroidCam API (toggle endpoint)
+    const flashlightUrl = `http://${config.DROIDCAM_IP}:${config.DROIDCAM_PORT}/v1/camera/torch_toggle`;
+    console.log('[Flashlight] Toggling flashlight ON at:', flashlightUrl);
+    
+    const response = await fetch(flashlightUrl, { 
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'text/plain'
+      }
+    });
     
     console.log('[Flashlight] Response status:', response.status);
     console.log('[Flashlight] Response ok:', response.ok);
@@ -204,31 +227,49 @@ app.put('/api/flashlight/on', async (req, res) => {
       throw new Error(`DroidCam API error: ${response.status}`);
     }
     
-    // Update state
+    // Update state - flashlight is now ON
     flashlightState.isOn = true;
     flashlightState.turnedOnAt = new Date();
     
-    // Clear any existing timeout
-    if (flashlightState.autoOffTimeout) {
-      clearTimeout(flashlightState.autoOffTimeout);
+    // Pause motion detection when flashlight is on
+    if (motionDetectionService) {
+      motionDetectionService.pause('flashlight');
+      console.log('[Flashlight] Motion detection paused');
     }
     
     // Set auto-off timer
     flashlightState.autoOffTimeout = setTimeout(async () => {
       console.log('[Flashlight] Auto-off timer triggered');
-      try {
-        // Turn off via DroidCam API
-        const offResponse = await fetch(flashlightUrl, { method: 'PUT' });
-        if (offResponse.ok) {
-          flashlightState.isOn = false;
-          flashlightState.turnedOnAt = null;
-          flashlightState.autoOffTimeout = null;
-          console.log('[Flashlight] Successfully turned off');
-        } else {
-          console.error('[Flashlight] Failed to turn off:', offResponse.status);
+      
+      // Only toggle if flashlight is still on
+      if (flashlightState.isOn) {
+        try {
+          // Turn off via DroidCam API (toggle endpoint)
+          console.log('[Flashlight] Toggling flashlight OFF');
+          const offResponse = await fetch(flashlightUrl, { 
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'text/plain'
+            }
+          });
+          
+          if (offResponse.ok) {
+            flashlightState.isOn = false;
+            flashlightState.turnedOnAt = null;
+            flashlightState.autoOffTimeout = null;
+            console.log('[Flashlight] Successfully turned off');
+            
+            // Resume motion detection when flashlight turns off
+            if (motionDetectionService) {
+              motionDetectionService.resume();
+              console.log('[Flashlight] Motion detection resumed');
+            }
+          } else {
+            console.error('[Flashlight] Failed to turn off:', offResponse.status);
+          }
+        } catch (error) {
+          console.error('[Flashlight] Auto-off error:', error);
         }
-      } catch (error) {
-        console.error('[Flashlight] Auto-off error:', error);
       }
     }, FLASHLIGHT_AUTO_OFF_DURATION);
     
@@ -244,6 +285,65 @@ app.put('/api/flashlight/on', async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Failed to turn on flashlight',
+      error: error.message 
+    });
+  }
+});
+
+// Flashlight control endpoint - turn off
+app.put('/api/flashlight/off', async (req, res) => {
+  try {
+    // If already off, just return current state
+    if (!flashlightState.isOn) {
+      console.log('[Flashlight] Already off');
+      return res.json({
+        success: true,
+        isOn: false,
+        message: 'Flashlight is already off'
+      });
+    }
+    
+    // Clear any existing timeout
+    if (flashlightState.autoOffTimeout) {
+      clearTimeout(flashlightState.autoOffTimeout);
+      flashlightState.autoOffTimeout = null;
+    }
+    
+    // Turn off flashlight via DroidCam API (toggle endpoint)
+    const flashlightUrl = `http://${config.DROIDCAM_IP}:${config.DROIDCAM_PORT}/v1/camera/torch_toggle`;
+    console.log('[Flashlight] Toggling flashlight OFF at:', flashlightUrl);
+    
+    const response = await fetch(flashlightUrl, { 
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'text/plain'
+      }
+    });
+    
+    if (response.ok) {
+      flashlightState.isOn = false;
+      flashlightState.turnedOnAt = null;
+      console.log('[Flashlight] Successfully turned off');
+      
+      // Resume motion detection when flashlight turns off
+      if (motionDetectionService) {
+        motionDetectionService.resume();
+        console.log('[Flashlight] Motion detection resumed');
+      }
+      
+      res.json({ 
+        success: true,
+        isOn: false,
+        message: 'Flashlight turned off successfully'
+      });
+    } else {
+      throw new Error(`DroidCam API error: ${response.status}`);
+    }
+  } catch (error) {
+    console.error('[Flashlight] Turn off error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to turn off flashlight',
       error: error.message 
     });
   }

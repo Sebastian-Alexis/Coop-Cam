@@ -12,7 +12,7 @@ class ThumbnailService {
   //generate thumbnail from video file
   async generateThumbnail(videoPath, options = {}) {
     const {
-      seekTime = 1, //capture frame at 1 second
+      seekTime = 3, //capture frame at 3 seconds (during motion)
       width = 320,
       height = 240,
       quality = 2 //1-31, lower is better quality

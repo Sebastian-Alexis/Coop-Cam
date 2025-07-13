@@ -37,6 +37,8 @@ class MotionDetectionService {
     this.lastMotionTime = 0;
     this.frameCount = 0;
     this.debugPath = './debug/motion';
+    this.isPaused = false;
+    this.pauseReason = null;
     
     //shadow removal configuration
     this.shadowRemovalEnabled = config.motionDetection.shadowRemoval?.enabled || false;
@@ -93,8 +95,32 @@ class MotionDetectionService {
     console.log('[Motion] Listening for motion-frame events');
   }
 
+  //pause motion detection
+  pause(reason = 'manual') {
+    this.isPaused = true;
+    this.pauseReason = reason;
+    console.log(`[Motion] Motion detection paused (reason: ${reason})`);
+  }
+
+  //resume motion detection
+  resume() {
+    const wasPaused = this.isPaused;
+    this.isPaused = false;
+    this.pauseReason = null;
+    if (wasPaused) {
+      console.log('[Motion] Motion detection resumed');
+      //reset previous frame to avoid false positives when resuming
+      this.previousFrameBuffer = null;
+    }
+  }
+
   async handleFrame(frame) {
     const now = Date.now();
+    
+    //skip if paused
+    if (this.isPaused) {
+      return;
+    }
     
     //skip if we're already processing or if it's too soon
     if (this.processing || now - this.lastCheckTime < this.checkInterval) {
