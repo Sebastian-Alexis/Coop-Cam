@@ -238,6 +238,9 @@ class RecordingService {
         frames: recording.frames.length,
         duration: (Date.now() - recording.startTime) / 1000
       });
+      
+      //enforce top 3 recordings for today
+      await this.enforceTop3RecordingsForToday();
 
     } catch (error) {
       console.error(`[Recording] ${recordingId} encoding failed:`, error);
@@ -296,6 +299,117 @@ class RecordingService {
     const metadataPath = videoPath.replace('.mp4', '.json');
     await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
     console.log(`[Recording] Metadata saved to ${metadataPath}`);
+  }
+
+  //delete a single recording and all its associated files
+  async deleteRecording(videoPath) {
+    console.log(`[Recording] Deleting recording: ${videoPath}`);
+    
+    const metadataPath = videoPath.replace('.mp4', '.json');
+    const videoDir = path.dirname(videoPath);
+    const videoBasename = path.basename(videoPath, '.mp4');
+    const thumbnailPath = path.join(videoDir, `${videoBasename}_thumb.jpg`);
+    
+    const filesToDelete = [
+      { path: videoPath, type: 'video' },
+      { path: thumbnailPath, type: 'thumbnail' },
+      { path: metadataPath, type: 'metadata' }
+    ];
+    
+    const deletionResults = [];
+    
+    for (const file of filesToDelete) {
+      try {
+        if (existsSync(file.path)) {
+          await fs.unlink(file.path);
+          console.log(`[Recording] Deleted ${file.type}: ${file.path}`);
+          deletionResults.push({ file: file.path, success: true });
+        } else {
+          console.log(`[Recording] ${file.type} not found: ${file.path}`);
+          deletionResults.push({ file: file.path, success: true, notFound: true });
+        }
+      } catch (error) {
+        console.error(`[Recording] Failed to delete ${file.type}: ${file.path}`, error);
+        deletionResults.push({ file: file.path, success: false, error: error.message });
+      }
+    }
+    
+    return deletionResults;
+  }
+
+  //enforce top 3 recordings per day based on movement intensity
+  async enforceTop3RecordingsForToday() {
+    console.log('[Recording] Enforcing top 3 recordings for today based on movement');
+    
+    try {
+      //get today's date folder
+      const today = new Date().toISOString().split('T')[0]; //YYYY-MM-DD
+      const todayDir = path.join(this.config.outputDir, today);
+      
+      //check if today's directory exists
+      if (!existsSync(todayDir)) {
+        console.log('[Recording] No recordings directory for today');
+        return;
+      }
+      
+      //get all video files from today
+      const files = await fs.readdir(todayDir);
+      const videoFiles = files.filter(file => file.endsWith('.mp4'));
+      
+      console.log(`[Recording] Found ${videoFiles.length} recordings for today`);
+      
+      if (videoFiles.length <= 3) {
+        console.log('[Recording] 3 or fewer recordings, no cleanup needed');
+        return;
+      }
+      
+      //load metadata for each recording to get movement data
+      const recordingsWithMovement = [];
+      
+      for (const videoFile of videoFiles) {
+        const videoPath = path.join(todayDir, videoFile);
+        const metadataPath = videoPath.replace('.mp4', '.json');
+        
+        try {
+          if (existsSync(metadataPath)) {
+            const metadataContent = await fs.readFile(metadataPath, 'utf8');
+            const metadata = JSON.parse(metadataContent);
+            
+            recordingsWithMovement.push({
+              videoPath,
+              videoFile,
+              metadata,
+              movement: metadata.motion?.difference || 0
+            });
+          } else {
+            console.warn(`[Recording] No metadata found for ${videoFile}`);
+          }
+        } catch (error) {
+          console.error(`[Recording] Error reading metadata for ${videoFile}:`, error);
+        }
+      }
+      
+      //sort by movement (highest first)
+      recordingsWithMovement.sort((a, b) => b.movement - a.movement);
+      
+      console.log('[Recording] Recordings sorted by movement:');
+      recordingsWithMovement.forEach((rec, index) => {
+        console.log(`  ${index + 1}. ${rec.videoFile} - Movement: ${(rec.movement * 100).toFixed(2)}%`);
+      });
+      
+      //keep top 3, delete the rest
+      const recordingsToDelete = recordingsWithMovement.slice(3);
+      
+      for (const recording of recordingsToDelete) {
+        console.log(`[Recording] Deleting low-movement recording: ${recording.videoFile} (${(recording.movement * 100).toFixed(2)}%)`);
+        await this.deleteRecording(recording.videoPath);
+      }
+      
+      console.log(`[Recording] Enforcement complete. Kept top 3 recordings, deleted ${recordingsToDelete.length}`);
+      
+    } catch (error) {
+      console.error('[Recording] Error enforcing top 3 recordings:', error);
+    }
   }
 
   //cleanup old recordings based on retention policy

@@ -11,6 +11,7 @@ import { config, DROIDCAM_URL } from './config.js';
 import { fetchWeatherData, getCacheStatus } from './services/weatherService.js';
 import MotionDetectionService from './services/motionDetectionService.js';
 import RecordingService from './services/recordingService.js';
+import ThumbnailService from './services/thumbnailService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,14 +65,29 @@ if (config.recording.enabled) {
   console.log('[Server] Recording service not created (disabled in config)');
 }
 
+// Create thumbnail service
+const thumbnailService = new ThumbnailService();
+console.log('[Server] Thumbnail service created');
+
 // Listen for motion events
 eventEmitter.on('motion', (data) => {
   console.log('[Motion] Event received:', data);
 });
 
 // Listen for recording events
-eventEmitter.on('recording-complete', (data) => {
+eventEmitter.on('recording-complete', async (data) => {
   console.log('[Recording] Complete:', data);
+  
+  // Generate thumbnail for completed recording
+  if (data.path) {
+    try {
+      console.log('[Thumbnail] Generating thumbnail for completed recording:', data.path);
+      await thumbnailService.generateThumbnail(data.path);
+      console.log('[Thumbnail] Thumbnail generated successfully');
+    } catch (error) {
+      console.error('[Thumbnail] Failed to generate thumbnail:', error);
+    }
+  }
 });
 
 eventEmitter.on('recording-failed', (data) => {
@@ -317,6 +333,129 @@ app.get('/api/droidcam-status', async (req, res) => {
       error: 'Failed to get status',
       message: error.message 
     });
+  }
+});
+
+// Recording API endpoints
+// Get recent recordings with metadata
+app.get('/api/recordings/recent', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 3;
+    const recordings = await thumbnailService.getRecentRecordings(config.recording.outputDir, limit);
+    
+    // Transform paths to relative URLs
+    const recordingsWithUrls = recordings.map(rec => ({
+      ...rec,
+      thumbnailUrl: rec.thumbnailExists ? `/api/recordings/thumbnail/${encodeURIComponent(rec.filename)}` : null,
+      videoUrl: `/api/recordings/video/${encodeURIComponent(rec.filename)}`,
+      // Calculate duration from metadata if available
+      duration: rec.metadata.endTime && rec.metadata.startTime ? 
+        Math.round((new Date(rec.metadata.endTime) - new Date(rec.metadata.startTime)) / 1000) : null
+    }));
+    
+    res.json({
+      success: true,
+      recordings: recordingsWithUrls
+    });
+  } catch (error) {
+    console.error('[Recordings API] Error getting recent recordings:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get recent recordings',
+      message: error.message
+    });
+  }
+});
+
+// Serve thumbnail image
+app.get('/api/recordings/thumbnail/:filename', async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const dateMatch = filename.match(/(\d{4}-\d{2}-\d{2})/);
+    
+    if (!dateMatch) {
+      return res.status(400).json({ error: 'Invalid filename format' });
+    }
+    
+    const dateDir = dateMatch[1];
+    const videoPath = path.join(config.recording.outputDir, dateDir, filename);
+    const thumbnailPath = thumbnailService.getThumbnailPath(videoPath);
+    
+    // Check if thumbnail exists
+    if (!fs.existsSync(thumbnailPath)) {
+      // Try to generate thumbnail if it doesn't exist
+      try {
+        await thumbnailService.generateThumbnail(videoPath);
+      } catch (genError) {
+        console.error('[Thumbnail API] Generation failed:', genError);
+        return res.status(404).json({ error: 'Thumbnail not found and could not be generated' });
+      }
+    }
+    
+    // Serve the thumbnail with cache headers
+    res.set({
+      'Content-Type': 'image/jpeg',
+      'Cache-Control': 'public, max-age=3600' // Cache for 1 hour
+    });
+    
+    res.sendFile(thumbnailPath);
+  } catch (error) {
+    console.error('[Thumbnail API] Error serving thumbnail:', error);
+    res.status(500).json({ error: 'Failed to serve thumbnail' });
+  }
+});
+
+// Serve video file
+app.get('/api/recordings/video/:filename', async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const dateMatch = filename.match(/(\d{4}-\d{2}-\d{2})/);
+    
+    if (!dateMatch) {
+      return res.status(400).json({ error: 'Invalid filename format' });
+    }
+    
+    const dateDir = dateMatch[1];
+    const videoPath = path.join(config.recording.outputDir, dateDir, filename);
+    
+    // Check if video exists
+    if (!fs.existsSync(videoPath)) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+    
+    // Get video stats
+    const stats = await fs.promises.stat(videoPath);
+    const fileSize = stats.size;
+    
+    // Handle range requests for video streaming
+    const range = req.headers.range;
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunksize = (end - start) + 1;
+      
+      const file = fs.createReadStream(videoPath, { start, end });
+      const head = {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunksize,
+        'Content-Type': 'video/mp4',
+      };
+      
+      res.writeHead(206, head);
+      file.pipe(res);
+    } else {
+      const head = {
+        'Content-Length': fileSize,
+        'Content-Type': 'video/mp4',
+      };
+      res.writeHead(200, head);
+      fs.createReadStream(videoPath).pipe(res);
+    }
+  } catch (error) {
+    console.error('[Video API] Error serving video:', error);
+    res.status(500).json({ error: 'Failed to serve video' });
   }
 });
 
