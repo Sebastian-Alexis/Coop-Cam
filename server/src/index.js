@@ -6,6 +6,7 @@ import fs from 'fs';
 import os from 'os';
 import { fileURLToPath } from 'url';
 import { EventEmitter } from 'events';
+import crypto from 'crypto';
 import MjpegProxy from './mjpegProxy.js';
 import { config, DROIDCAM_URL } from './config.js';
 import { fetchWeatherData, getCacheStatus } from './services/weatherService.js';
@@ -69,9 +70,35 @@ if (config.recording.enabled) {
 const thumbnailService = new ThumbnailService();
 console.log('[Server] Thumbnail service created');
 
+// SSE client management
+const sseClients = new Set();
+let motionEventHistory = [];
+const MAX_MOTION_HISTORY = 100;
+
 // Listen for motion events
 eventEmitter.on('motion', (data) => {
   console.log('[Motion] Event received:', data);
+  
+  // Add to history (circular buffer)
+  const motionEvent = {
+    type: 'motion',
+    timestamp: Date.now(),
+    intensity: data.intensity || 0,
+    regions: data.regions || [],
+    frameNumber: data.frameNumber || 0,
+    recordingStarted: false
+  };
+  
+  motionEventHistory.push(motionEvent);
+  if (motionEventHistory.length > MAX_MOTION_HISTORY) {
+    motionEventHistory.shift();
+  }
+  
+  // Broadcast to all SSE clients
+  const sseMessage = `data: ${JSON.stringify(motionEvent)}\n\n`;
+  sseClients.forEach(client => {
+    client.write(sseMessage);
+  });
 });
 
 // Listen for recording events
@@ -103,6 +130,49 @@ const flashlightState = {
 
 // Auto-off duration (5 minutes)
 const FLASHLIGHT_AUTO_OFF_DURATION = 5 * 60 * 1000;
+
+// Rate limiting for password attempts
+const passwordAttempts = new Map();
+const MAX_PASSWORD_ATTEMPTS = 3;
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+
+// Timing-safe password comparison
+function verifyPassword(inputPassword) {
+  const storedPassword = config.STREAM_PAUSE_PASSWORD;
+  
+  if (!inputPassword || !storedPassword) {
+    return false;
+  }
+  
+  const inputBuffer = Buffer.from(inputPassword);
+  const storedBuffer = Buffer.from(storedPassword);
+  
+  // Length must match for timing-safe comparison
+  if (inputBuffer.length !== storedBuffer.length) {
+    return false;
+  }
+  
+  return crypto.timingSafeEqual(inputBuffer, storedBuffer);
+}
+
+// Check rate limit for IP
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const attempts = passwordAttempts.get(ip) || [];
+  
+  // Remove old attempts outside window
+  const recentAttempts = attempts.filter(time => now - time < RATE_LIMIT_WINDOW);
+  
+  if (recentAttempts.length >= MAX_PASSWORD_ATTEMPTS) {
+    return false;
+  }
+  
+  // Update attempts
+  recentAttempts.push(now);
+  passwordAttempts.set(ip, recentAttempts);
+  
+  return true;
+}
 
 // API Routes
 app.get('/api/stream', (req, res) => {
@@ -155,6 +225,61 @@ app.get('/api/health', (req, res) => {
 app.get('/api/interpolation-stats', (req, res) => {
   const stats = mjpegProxy.getStats();
   res.json(stats.interpolation);
+});
+
+// SSE endpoint for motion events
+app.get('/api/events/motion', (req, res) => {
+  // Set SSE headers
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*'
+  });
+  
+  // Send initial connection message
+  res.write(`data: ${JSON.stringify({ type: 'connected', timestamp: Date.now() })}\n\n`);
+  
+  // Add client to set
+  sseClients.add(res);
+  console.log(`[SSE] Client connected. Total clients: ${sseClients.size}`);
+  
+  // Send heartbeat every 30 seconds to keep connection alive
+  const heartbeatInterval = setInterval(() => {
+    res.write(`data: ${JSON.stringify({ type: 'heartbeat', timestamp: Date.now() })}\n\n`);
+  }, 30000);
+  
+  // Handle client disconnect
+  req.on('close', () => {
+    clearInterval(heartbeatInterval);
+    sseClients.delete(res);
+    console.log(`[SSE] Client disconnected. Total clients: ${sseClients.size}`);
+  });
+});
+
+// Get motion event history
+app.get('/api/motion/history', (req, res) => {
+  const limit = parseInt(req.query.limit) || 50;
+  const offset = parseInt(req.query.offset) || 0;
+  const since = req.query.since ? parseInt(req.query.since) : null;
+  
+  let filteredEvents = motionEventHistory;
+  
+  // Filter by timestamp if provided
+  if (since) {
+    filteredEvents = filteredEvents.filter(event => event.timestamp > since);
+  }
+  
+  // Apply pagination
+  const paginatedEvents = filteredEvents.slice(offset, offset + limit);
+  
+  res.json({
+    success: true,
+    events: paginatedEvents,
+    total: filteredEvents.length,
+    offset: offset,
+    limit: limit
+  });
 });
 
 // Get flashlight status
@@ -373,6 +498,85 @@ app.get('/api/weather', async (req, res) => {
       success: false,
       error: 'Failed to fetch weather data',
       message: error.message
+    });
+  }
+});
+
+// Stream pause endpoint
+app.post('/api/stream/pause', express.json(), async (req, res) => {
+  const clientIp = req.ip || req.connection.remoteAddress;
+  
+  // Check rate limit
+  if (!checkRateLimit(clientIp)) {
+    console.log(`[Stream Pause] Rate limit exceeded for IP: ${clientIp}`);
+    return res.status(429).json({
+      success: false,
+      message: 'Too many attempts. Please try again in a minute.'
+    });
+  }
+  
+  const { password } = req.body;
+  
+  // Validate password
+  if (!password) {
+    return res.status(400).json({
+      success: false,
+      message: 'Password is required'
+    });
+  }
+  
+  // Verify password using timing-safe comparison
+  if (!verifyPassword(password)) {
+    console.log(`[Stream Pause] Invalid password attempt from IP: ${clientIp}`);
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid password'
+    });
+  }
+  
+  try {
+    // Pause the stream
+    const paused = await mjpegProxy.pauseStream();
+    
+    if (paused) {
+      console.log(`[Stream Pause] Stream paused by IP: ${clientIp} at ${new Date().toISOString()}`);
+      res.json({
+        success: true,
+        message: 'Stream paused for 5 minutes',
+        pauseDuration: 300 // seconds
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: 'Stream is already paused'
+      });
+    }
+  } catch (error) {
+    console.error('[Stream Pause] Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to pause stream'
+    });
+  }
+});
+
+// Stream status endpoint
+app.get('/api/stream/status', (req, res) => {
+  try {
+    const pauseStatus = mjpegProxy.getPauseStatus();
+    const proxyStats = mjpegProxy.getStats();
+    
+    res.json({
+      success: true,
+      ...pauseStatus,
+      clientCount: proxyStats.clientCount,
+      isConnected: proxyStats.isConnected
+    });
+  } catch (error) {
+    console.error('[Stream Status] Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get stream status'
     });
   }
 });

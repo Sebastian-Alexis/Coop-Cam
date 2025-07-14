@@ -46,6 +46,9 @@ export const config = {
   WEATHER_GRID_X: parseInt(process.env.WEATHER_GRID_X || '39', 10),
   WEATHER_GRID_Y: parseInt(process.env.WEATHER_GRID_Y || '60', 10),
   
+  // Stream pause configuration
+  STREAM_PAUSE_PASSWORD: process.env.STREAM_PAUSE_PASSWORD || 'changeme',
+  
   // Motion detection configuration
   motionDetection: {
     enabled: process.env.MOTION_DETECTION_ENABLED === 'true',

@@ -20,6 +20,17 @@ class MjpegProxy extends EventEmitter {
     this.serverFpsLimit = 30; // Server-side FPS limit
     this.serverFrameInterval = 1000 / this.serverFpsLimit; // 33ms for 30 FPS
     
+    //pause state management
+    this.pauseState = {
+      isPaused: false,
+      pauseStartTime: null,
+      pauseEndTime: null,
+      pauseDuration: 5 * 60 * 1000, // 5 minutes
+      maintenanceFrame: null,
+      updateInterval: null,
+      pauseTimeout: null
+    };
+    
     //frame interpolation configuration
     this.interpolationEnabled = config.FRAME_INTERPOLATION;
     this.frameBuffer = [];
@@ -466,6 +477,11 @@ class MjpegProxy extends EventEmitter {
     const boundary = 'frame';
     const now = Date.now();
     
+    // If paused, broadcast maintenance frame instead
+    if (this.pauseState.isPaused && this.pauseState.maintenanceFrame) {
+      frame = this.pauseState.maintenanceFrame;
+    }
+    
     // Check for gaps and fill them by repeating last frame
     if (this.interpolationEnabled && this.lastFrame) {
       const timeSinceLastBroadcast = now - this.lastBroadcastTime;
@@ -566,6 +582,133 @@ class MjpegProxy extends EventEmitter {
     
     // Clean up dead clients
     deadClients.forEach(id => this.removeClient(id));
+  }
+  
+  //pause stream and start showing maintenance message
+  async pauseStream() {
+    if (this.pauseState.isPaused) {
+      console.log('[Proxy] Stream already paused');
+      return false;
+    }
+    
+    console.log('[Proxy] Pausing stream for 5 minutes');
+    this.pauseState.isPaused = true;
+    this.pauseState.pauseStartTime = Date.now();
+    this.pauseState.pauseEndTime = this.pauseState.pauseStartTime + this.pauseState.pauseDuration;
+    
+    //generate initial maintenance frame
+    await this.generateMaintenanceFrame();
+    
+    //update maintenance frame every second
+    this.pauseState.updateInterval = setInterval(async () => {
+      await this.generateMaintenanceFrame();
+    }, 1000);
+    
+    //set auto-resume timer
+    this.pauseState.pauseTimeout = setTimeout(() => {
+      this.resumeStream();
+    }, this.pauseState.pauseDuration);
+    
+    return true;
+  }
+  
+  //resume normal stream
+  resumeStream() {
+    if (!this.pauseState.isPaused) {
+      console.log('[Proxy] Stream not paused');
+      return false;
+    }
+    
+    console.log('[Proxy] Resuming stream');
+    this.pauseState.isPaused = false;
+    this.pauseState.pauseStartTime = null;
+    this.pauseState.pauseEndTime = null;
+    this.pauseState.maintenanceFrame = null;
+    
+    //clear intervals and timeouts
+    if (this.pauseState.updateInterval) {
+      clearInterval(this.pauseState.updateInterval);
+      this.pauseState.updateInterval = null;
+    }
+    
+    if (this.pauseState.pauseTimeout) {
+      clearTimeout(this.pauseState.pauseTimeout);
+      this.pauseState.pauseTimeout = null;
+    }
+    
+    //broadcast last real frame to resume stream
+    if (this.lastFrame) {
+      this.broadcast(this.lastFrame);
+    }
+    
+    return true;
+  }
+  
+  //generate maintenance frame with countdown
+  async generateMaintenanceFrame() {
+    const now = Date.now();
+    const remainingMs = Math.max(0, this.pauseState.pauseEndTime - now);
+    const remainingSeconds = Math.ceil(remainingMs / 1000);
+    const minutes = Math.floor(remainingSeconds / 60);
+    const seconds = remainingSeconds % 60;
+    const timeText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    
+    try {
+      //create maintenance frame with sharp
+      const frame = await sharp({
+        create: {
+          width: 1920,
+          height: 1080,
+          channels: 3,
+          background: { r: 20, g: 20, b: 20 } // Dark gray background
+        }
+      })
+      .composite([{
+        input: Buffer.from(`
+          <svg width="1920" height="1080" xmlns="http://www.w3.org/2000/svg">
+            <text x="50%" y="45%" text-anchor="middle" 
+                  font-family="Arial, sans-serif" font-size="72" fill="white">
+              Routine maintenance!
+            </text>
+            <text x="50%" y="55%" text-anchor="middle" 
+                  font-family="Arial, sans-serif" font-size="48" fill="#cccccc">
+              Stream will resume in ${timeText}
+            </text>
+          </svg>
+        `),
+        top: 0,
+        left: 0
+      }])
+      .jpeg({ quality: 80 })
+      .toBuffer();
+      
+      this.pauseState.maintenanceFrame = frame;
+      
+      //broadcast maintenance frame immediately
+      if (this.pauseState.isPaused) {
+        this.broadcast(frame);
+      }
+    } catch (error) {
+      console.error('[Proxy] Error generating maintenance frame:', error);
+    }
+  }
+  
+  //get pause status
+  getPauseStatus() {
+    if (!this.pauseState.isPaused) {
+      return { isPaused: false };
+    }
+    
+    const now = Date.now();
+    const remainingMs = Math.max(0, this.pauseState.pauseEndTime - now);
+    const remainingSeconds = Math.ceil(remainingMs / 1000);
+    
+    return {
+      isPaused: true,
+      remainingSeconds,
+      pauseStartTime: this.pauseState.pauseStartTime,
+      pauseEndTime: this.pauseState.pauseEndTime
+    };
   }
 }
 
