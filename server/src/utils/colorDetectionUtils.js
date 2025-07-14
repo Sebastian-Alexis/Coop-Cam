@@ -12,14 +12,6 @@ export const CHICKEN_COLOR_PROFILES = {
       v: [200, 255]   //high brightness
     }
   },
-  black: {
-    name: 'black',
-    hsv: {
-      h: [0, 180],    //any hue (black is achromatic)
-      s: [0, 255],    //any saturation
-      v: [0, 60]      //very low brightness
-    }
-  },
   brown: {
     name: 'brown',
     hsv: {
@@ -102,7 +94,6 @@ export function matchesColorProfile(hsv, profile) {
 export function analyzeChickenColors(buffer, width, height) {
   const colorCounts = {
     white: 0,
-    black: 0,
     brown: 0,
     orange: 0,
     red: 0,
@@ -288,7 +279,7 @@ export class ColorBlobDetector {
           blobMap.set(label, {
             id: label,
             pixels: [],
-            colorCounts: { white: 0, black: 0, brown: 0, orange: 0, red: 0 },
+            colorCounts: { white: 0, brown: 0, orange: 0, red: 0 },
             minX: x,
             maxX: x,
             minY: y,

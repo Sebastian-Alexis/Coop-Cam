@@ -88,6 +88,14 @@ export const config = {
       enabled: process.env.COLOR_DETECTION_ENABLED === 'true',
       minChickenRatio: parseFloat(process.env.MIN_CHICKEN_COLOR_RATIO || '0.1'),
       minBlobSize: parseInt(process.env.MIN_BLOB_SIZE || '50', 10)
+    },
+    // Motion detection mode configuration
+    detectionMode: process.env.MOTION_DETECTION_MODE || 'color_filter', // 'traditional', 'color_filter', 'color_first'
+    // Color-first mode specific settings
+    colorFirst: {
+      minBlobMovement: parseInt(process.env.MIN_BLOB_MOVEMENT_PIXELS || '5', 10),
+      maxBlobMatchDistance: parseInt(process.env.MAX_BLOB_MATCH_DISTANCE || '30', 10),
+      minBlobLifetime: parseInt(process.env.MIN_BLOB_LIFETIME || '2', 10)
     }
   },
   

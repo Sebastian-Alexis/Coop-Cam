@@ -102,6 +102,53 @@
       font-variant-numeric: tabular-nums;
       letter-spacing: 0.05em;
     }
+    
+    /* Fullscreen button styles */
+    .fullscreen-btn {
+      position: absolute;
+      bottom: 1rem;
+      right: 1rem;
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      padding: 0.5rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      opacity: 0;
+      visibility: hidden;
+    }
+    
+    .fullscreen-btn:hover {
+      background: rgba(0, 0, 0, 0.8);
+      transform: scale(1.1);
+    }
+    
+    /* Show fullscreen button on container hover */
+    .video-container:hover .fullscreen-btn {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    /* Always show button on touch devices */
+    @media (hover: none) {
+      .fullscreen-btn {
+        opacity: 0.8;
+        visibility: visible;
+      }
+    }
+    
+    /* Fullscreen video styles */
+    .video-container:fullscreen {
+      background: black;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .video-container:fullscreen #stream {
+      max-width: 100%;
+      max-height: 100%;
+    }
   </style>
 </head>
 <body>
@@ -127,17 +174,29 @@
     <!-- Main Layout -->
     <div class="flex-1 flex flex-col">
       <!-- Video Section -->
-      <div class="flex-1 container-padding max-w-7xl mx-auto w-full py-4 md:py-6 flex flex-col">
-        <div class="flex-1 flex items-center justify-center">
-          <div class="relative w-full h-full max-h-[65vh] bg-base-200 rounded-2xl overflow-hidden shadow-lg border border-base-300">
+      <div class="container-padding max-w-7xl mx-auto w-full py-4 md:py-6">
+        <div class="flex justify-center">
+          <div id="videoContainer" class="video-container relative w-full bg-base-200 rounded-2xl overflow-hidden shadow-lg border border-base-300">
             <img 
               id="stream"
               src="/api/stream" 
               alt="Live Coop Stream" 
-              class="w-full h-full object-contain"
+              class="w-full h-auto object-contain"
               onerror="handleStreamError()"
               onload="handleStreamLoad()"
             />
+            <!-- Fullscreen button -->
+            <button 
+              id="fullscreenBtn"
+              class="fullscreen-btn"
+              onclick="toggleFullscreen()"
+              title="Toggle fullscreen (F)"
+              aria-label="Toggle fullscreen"
+            >
+              <svg id="fullscreenIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+              </svg>
+            </button>
           </div>
         </div>
         <div class="flex justify-center mt-4">
@@ -277,6 +336,7 @@
     let streamRetryCount = 0;
     let streamLoadTime = null;
     let frameCount = 0;
+    let isFullscreen = false;
     const MAX_RETRY_COUNT = 10;
     const RETRY_DELAY = 2000; // Start with 2 seconds
     
@@ -750,6 +810,86 @@
       }, { once: true });
     }
 
+    //toggle fullscreen mode
+    async function toggleFullscreen() {
+      const container = document.getElementById('videoContainer');
+      
+      try {
+        if (!document.fullscreenElement && 
+            !document.webkitFullscreenElement && 
+            !document.mozFullScreenElement && 
+            !document.msFullscreenElement) {
+          //enter fullscreen
+          if (container.requestFullscreen) {
+            await container.requestFullscreen();
+          } else if (container.webkitRequestFullscreen) { //safari
+            await container.webkitRequestFullscreen();
+          } else if (container.mozRequestFullScreen) { //firefox
+            await container.mozRequestFullScreen();
+          } else if (container.msRequestFullscreen) { //ie/edge
+            await container.msRequestFullscreen();
+          }
+        } else {
+          //exit fullscreen
+          if (document.exitFullscreen) {
+            await document.exitFullscreen();
+          } else if (document.webkitExitFullscreen) { //safari
+            await document.webkitExitFullscreen();
+          } else if (document.mozCancelFullScreen) { //firefox
+            await document.mozCancelFullScreen();
+          } else if (document.msExitFullscreen) { //ie/edge
+            await document.msExitFullscreen();
+          }
+        }
+      } catch (error) {
+        console.error('Fullscreen API error:', error);
+        alert('Fullscreen mode is not supported or was blocked by your browser');
+      }
+    }
+    
+    //update fullscreen button icon based on state
+    function updateFullscreenButton() {
+      const icon = document.getElementById('fullscreenIcon');
+      const btn = document.getElementById('fullscreenBtn');
+      
+      if (isFullscreen) {
+        //show compress icon
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />';
+        btn.style.opacity = '1';
+        btn.style.visibility = 'visible';
+      } else {
+        //show expand icon
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />';
+      }
+    }
+    
+    //handle fullscreen change events
+    function handleFullscreenChange() {
+      isFullscreen = !!(document.fullscreenElement || 
+                       document.webkitFullscreenElement || 
+                       document.mozFullScreenElement || 
+                       document.msFullscreenElement);
+      updateFullscreenButton();
+    }
+    
+    //handle keyboard shortcuts
+    function handleKeyDown(event) {
+      //f key for fullscreen
+      if (event.key.toLowerCase() === 'f' && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        toggleFullscreen();
+      }
+    }
+    
+    //setup fullscreen event listeners
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+    
+    //keyboard event listener
+    window.addEventListener('keydown', handleKeyDown);
+    
     //initialize
     updateTime();
     updateStats();
@@ -757,6 +897,7 @@
     checkFlashlightStatus();
     setupStreamReconnection();
     updateRecordings();
+    updateFullscreenButton();
     
     //periodic updates
     setInterval(updateTime, 1000);

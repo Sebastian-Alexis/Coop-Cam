@@ -15,6 +15,7 @@ import {
   validateChickenMotion,
   getTimeAdjustedProfiles
 } from '../utils/colorDetectionUtils.js';
+import { ColorBlobTracker } from '../utils/colorBlobTracker.js';
 import { TemporalShadowDetector } from '../utils/temporalShadowDetector.js';
 import { RegionAnalyzer } from '../utils/regionAnalyzer.js';
 import { 
@@ -57,6 +58,24 @@ class MotionDetectionService {
     this.colorDetectionEnabled = config.motionDetection.colorDetection?.enabled || false;
     this.minChickenRatio = config.motionDetection.colorDetection?.minChickenRatio || 0.1;
     this.minBlobSize = config.motionDetection.colorDetection?.minBlobSize || 50;
+    
+    //detection mode configuration
+    this.detectionMode = config.motionDetection.detectionMode || 'color_filter';
+    
+    //initialize color blob tracker for color-first mode
+    this.colorBlobTracker = null;
+    if (this.detectionMode === 'color_first') {
+      this.colorBlobTracker = new ColorBlobTracker(
+        config.motionDetection.width,
+        config.motionDetection.height,
+        {
+          maxMatchDistance: config.motionDetection.colorFirst.maxBlobMatchDistance,
+          minBlobMovement: config.motionDetection.colorFirst.minBlobMovement,
+          minBlobLifetime: config.motionDetection.colorFirst.minBlobLifetime
+        }
+      );
+      console.log('[Motion] Color-first detection mode enabled');
+    }
     
     //initialize temporal shadow detector if advanced features enabled
     this.temporalDetector = null;
@@ -160,8 +179,37 @@ class MotionDetectionService {
       if (this.previousFrameBuffer) {
         //calculate difference between frames
         let comparisonResult;
+        let finalMotionDecision = false;
+        let chickenValidation = null;
         
-        if (this.colorDetectionEnabled) {
+        //color-first mode: detect chicken blobs first, then check if they moved
+        if (this.detectionMode === 'color_first' && this.colorBlobTracker) {
+          const colorMotionResult = this.colorBlobTracker.processFrame(
+            currentFrameBuffer,
+            this.minBlobSize
+          );
+          
+          finalMotionDecision = colorMotionResult.motionDetected;
+          
+          if (this.frameCount % 10 === 0) {
+            if (colorMotionResult.motionDetected) {
+              console.log(`[Motion] Color-first detection - Motion detected! Moving blobs: ${colorMotionResult.movingBlobs.length}, Total blobs: ${colorMotionResult.totalBlobs}, Tracked: ${colorMotionResult.trackedBlobs}`);
+              colorMotionResult.movingBlobs.forEach(blob => {
+                console.log(`[Motion]   Blob ${blob.id}: ${blob.color} chicken moved ${blob.movement.toFixed(1)}px (lifetime: ${blob.lifetime} frames)`);
+              });
+            } else {
+              console.log(`[Motion] Color-first detection - No motion. Total blobs: ${colorMotionResult.totalBlobs}, Tracked: ${colorMotionResult.trackedBlobs}`);
+            }
+          }
+          
+          //skip traditional motion detection in color-first mode
+          comparisonResult = {
+            changedPixels: 0,
+            normalizedDifference: 0,
+            shadowPixels: 0,
+            shadowRatio: 0
+          };
+        } else if (this.colorDetectionEnabled) {
           //use color-aware comparison
           if (this.shadowRemovalEnabled && config.motionDetection.shadowRemoval?.adaptiveThreshold) {
             const timeThresholds = getTimeBasedThresholds();
@@ -250,9 +298,11 @@ class MotionDetectionService {
         
         //region-based analysis if enabled
         let regionAnalysis = null;
-        let finalMotionDecision = normalizedDifference > config.motionDetection.threshold;
+        if (this.detectionMode !== 'color_first') {
+          finalMotionDecision = normalizedDifference > config.motionDetection.threshold;
+        }
         
-        if (this.regionAnalyzer) {
+        if (this.regionAnalyzer && this.detectionMode !== 'color_first') {
           regionAnalysis = this.regionAnalyzer.analyzeRegions(
             currentFrameBuffer,
             this.previousFrameBuffer,
@@ -269,8 +319,8 @@ class MotionDetectionService {
           }
         }
         
-        //enhanced logging for shadow removal
-        if (this.frameCount % 10 === 0) {
+        //enhanced logging for shadow removal (skip in color-first mode)
+        if (this.frameCount % 10 === 0 && this.detectionMode !== 'color_first') {
           if (this.shadowRemovalEnabled) {
             let logMsg = `[Motion] Frame comparison - Difference: ${(normalizedDifference * 100).toFixed(4)}%, Threshold: ${(config.motionDetection.threshold * 100).toFixed(4)}%, Shadow pixels: ${comparisonResult.shadowPixels}, Shadow ratio: ${(comparisonResult.shadowRatio * 100).toFixed(2)}%`;
             if (temporalAnalysis) {
@@ -285,9 +335,8 @@ class MotionDetectionService {
           }
         }
 
-        //chicken color validation if enabled
-        let chickenValidation = null;
-        if (this.colorDetectionEnabled && finalMotionDecision) {
+        //chicken color validation if enabled (skip in color-first mode)
+        if (this.colorDetectionEnabled && finalMotionDecision && this.detectionMode !== 'color_first') {
           chickenValidation = validateChickenMotion(
             currentFrameBuffer,
             config.motionDetection.width,
