@@ -852,6 +852,7 @@ app.delete('/api/recordings/:filename/reactions', async (req, res) => {
   try {
     const filename = req.params.filename;
     const userId = req.cookies?.viewerId || req.headers['x-viewer-id'];
+    const { reactionType } = req.body; // Optional: specific reaction to remove
     
     if (!userId) {
       return res.status(400).json({
@@ -860,7 +861,7 @@ app.delete('/api/recordings/:filename/reactions', async (req, res) => {
       });
     }
     
-    const result = await reactionService.removeReaction(filename, userId);
+    const result = await reactionService.removeReaction(filename, userId, reactionType);
     res.json(result);
   } catch (error) {
     console.error('[Reactions API] Error removing reaction:', error);

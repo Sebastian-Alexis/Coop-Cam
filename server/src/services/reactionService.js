@@ -102,34 +102,29 @@ class ReactionService {
     //load current reactions
     const reactionsData = await this.loadReactions(recordingFilename);
     
-    //find existing reaction from this user
-    const existingIndex = reactionsData.reactions.findIndex(r => r.userId === userId);
+    //find if user already has this specific reaction
+    const existingIndex = reactionsData.reactions.findIndex(
+      r => r.userId === userId && r.reaction === reactionType
+    );
     
     if (existingIndex >= 0) {
-      //update existing reaction
-      const oldReaction = reactionsData.reactions[existingIndex].reaction;
-      reactionsData.reactions[existingIndex] = {
-        userId,
-        reaction: reactionType,
-        timestamp: new Date().toISOString()
+      //user already has this reaction, don't add duplicate
+      return {
+        success: true,
+        summary: reactionsData.summary,
+        userReactions: this.getUserReactions(reactionsData, userId)
       };
-      
-      //update summary counts
-      if (reactionsData.summary[oldReaction] > 0) {
-        reactionsData.summary[oldReaction]--;
-      }
-      reactionsData.summary[reactionType]++;
-    } else {
-      //add new reaction
-      reactionsData.reactions.push({
-        userId,
-        reaction: reactionType,
-        timestamp: new Date().toISOString()
-      });
-      
-      //update summary
-      reactionsData.summary[reactionType]++;
     }
+    
+    //add new reaction (user can have multiple different reactions)
+    reactionsData.reactions.push({
+      userId,
+      reaction: reactionType,
+      timestamp: new Date().toISOString()
+    });
+    
+    //update summary
+    reactionsData.summary[reactionType]++
     
     //save updated reactions
     await this.saveReactions(recordingFilename, reactionsData);
@@ -137,35 +132,56 @@ class ReactionService {
     return {
       success: true,
       summary: reactionsData.summary,
-      userReaction: reactionType
+      userReactions: this.getUserReactions(reactionsData, userId)
     };
   }
 
-  //remove a user's reaction
-  async removeReaction(recordingFilename, userId) {
+  //remove a specific user's reaction
+  async removeReaction(recordingFilename, userId, reactionType = null) {
     //load current reactions
     const reactionsData = await this.loadReactions(recordingFilename);
     
-    //find user's reaction
-    const existingIndex = reactionsData.reactions.findIndex(r => r.userId === userId);
+    let removed = false;
     
-    if (existingIndex >= 0) {
-      //remove reaction
-      const removedReaction = reactionsData.reactions[existingIndex];
-      reactionsData.reactions.splice(existingIndex, 1);
+    if (reactionType) {
+      //remove specific reaction type
+      const existingIndex = reactionsData.reactions.findIndex(
+        r => r.userId === userId && r.reaction === reactionType
+      );
       
-      //update summary
-      if (reactionsData.summary[removedReaction.reaction] > 0) {
-        reactionsData.summary[removedReaction.reaction]--;
+      if (existingIndex >= 0) {
+        const removedReaction = reactionsData.reactions[existingIndex];
+        reactionsData.reactions.splice(existingIndex, 1);
+        
+        //update summary
+        if (reactionsData.summary[removedReaction.reaction] > 0) {
+          reactionsData.summary[removedReaction.reaction]--;
+        }
+        removed = true;
       }
+    } else {
+      //remove all reactions from this user (backward compatibility)
+      const userReactions = reactionsData.reactions.filter(r => r.userId === userId);
+      reactionsData.reactions = reactionsData.reactions.filter(r => r.userId !== userId);
       
+      //update summary for each removed reaction
+      userReactions.forEach(reaction => {
+        if (reactionsData.summary[reaction.reaction] > 0) {
+          reactionsData.summary[reaction.reaction]--;
+        }
+      });
+      
+      removed = userReactions.length > 0;
+    }
+    
+    if (removed) {
       //save updated reactions
       await this.saveReactions(recordingFilename, reactionsData);
       
       return {
         success: true,
         summary: reactionsData.summary,
-        userReaction: null
+        userReactions: this.getUserReactions(reactionsData, userId)
       };
     }
     
@@ -174,8 +190,15 @@ class ReactionService {
       success: false,
       message: 'No reaction found for this user',
       summary: reactionsData.summary,
-      userReaction: null
+      userReactions: []
     };
+  }
+  
+  //helper to get all reactions for a specific user
+  getUserReactions(reactionsData, userId) {
+    return reactionsData.reactions
+      .filter(r => r.userId === userId)
+      .map(r => r.reaction);
   }
 
   //get reactions for a recording including user's reaction
@@ -185,15 +208,12 @@ class ReactionService {
     const result = {
       summary: reactionsData.summary,
       totalReactions: reactionsData.reactions.length,
-      userReaction: null
+      userReactions: []
     };
     
-    //find user's reaction if userId provided
+    //find user's reactions if userId provided (multiple allowed)
     if (userId) {
-      const userReaction = reactionsData.reactions.find(r => r.userId === userId);
-      if (userReaction) {
-        result.userReaction = userReaction.reaction;
-      }
+      result.userReactions = this.getUserReactions(reactionsData, userId);
     }
     
     return result;

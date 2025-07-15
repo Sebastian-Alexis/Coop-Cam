@@ -244,12 +244,17 @@
     .reaction-item {
       position: relative;
       line-height: 1;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: transform 0.1s ease;
     }
     
     .reaction-item img {
-      width: 32px;
       height: 32px;
+      width: auto;
+      max-width: 48px;
       display: block;
+      object-fit: contain;
     }
     
     .reaction-item .reaction-count {
@@ -275,12 +280,7 @@
       background-color: rgba(59, 130, 246, 0.3); /* Blue transparent */
     }
     
-    /* Make reactions clickable */
-    .reaction-item {
-      cursor: pointer;
-      transition: transform 0.1s ease;
-    }
-    
+    /* Hover effect for reactions */
     .reaction-item:hover {
       transform: scale(1.05);
     }
@@ -1264,26 +1264,26 @@
                   <div class="text-xs text-base-content/60 mt-1">${formatTimestamp(recording.timestamp)}</div>
                 </div>
                 
-                <!-- Add reaction button on the right -->
-                <button 
-                  class="reaction-trigger"
-                  onclick="event.stopPropagation(); showReactionPopup('${recording.filename}')"
-                  title="Add reaction"
-                >
-                  <img src="/art/reactions/add_reaction.gif" alt="Add reaction" class="reaction-trigger-img" />
-                </button>
               </div>
               
-              <!-- Reaction badges positioned at bottom right -->
-              <div class="reaction-badges absolute bottom-0 right-2">
+              <!-- Add reaction button positioned at top-right -->
+              <button 
+                class="reaction-trigger absolute bottom-8 right-2"
+                onclick="event.stopPropagation(); showReactionPopup('${recording.filename}')"
+                title="Add reaction"
+              >
+                <img src="/art/reactions/add_reaction.gif" alt="Add reaction" class="reaction-trigger-img" />
+              </button>
+              
+              <!-- Reaction badges positioned at bottom-right -->
+              <div class="reaction-badges absolute -bottom-1 right-2 flex items-center gap-1">
                 ${(() => {
                   const topReactions = Object.entries(recording.reactions?.summary || {})
                     .filter(([_, count]) => count > 0)
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 3);
+                    .sort((a, b) => b[1] - a[1]);
                   
                   return topReactions.map(([type, count]) => `
-                    <div class="reaction-item ${recording.reactions?.userReaction === type ? 'user-reaction' : ''}" 
+                    <div class="reaction-item ${recording.reactions?.userReactions?.includes(type) ? 'user-reaction' : ''}" 
                          onclick="event.stopPropagation(); selectReaction('${recording.filename}', '${type}')"
                          title="React with ${type}">
                       <img src="${data.reactionTypes[type]}" alt="${type}" />
@@ -1342,7 +1342,7 @@
       //populate popup content
       const content = popup.querySelector('.reaction-popup-content');
       content.innerHTML = Object.entries(window.reactionTypes || {}).map(([type, imageSrc]) => {
-        const isActive = recording.reactions?.userReaction === type;
+        const isActive = recording.reactions?.userReactions?.includes(type) || false;
         return `
           <button
             class="reaction-option ${isActive ? 'active' : ''}"
@@ -1459,23 +1459,31 @@
       const viewerId = getOrCreateViewerId();
       const popup = document.getElementById('globalReactionPopup');
       const option = popup.querySelector(`.reaction-option[data-reaction="${reactionType}"]`);
-      const isActive = option.classList.contains('active');
+      const isActive = option?.classList.contains('active') || false;
+      
+      //check if user already has this reaction from the actual UI
+      const container = document.querySelector(`.reactions-container[data-filename="${filename}"]`);
+      const reactionItem = container.querySelector(`.reaction-item img[alt="${reactionType}"]`)?.closest('.reaction-item');
+      const hasReaction = reactionItem?.classList.contains('user-reaction') || false;
       
       //add animation to the trigger button
-      const container = document.querySelector(`.reactions-container[data-filename="${filename}"]`);
       const trigger = container.querySelector('.reaction-trigger');
-      trigger.style.animation = 'none';
-      setTimeout(() => trigger.style.animation = '', 10);
+      if (trigger) {
+        trigger.style.animation = 'none';
+        setTimeout(() => trigger.style.animation = '', 10);
+      }
       
       try {
         let response;
-        if (isActive) {
-          //remove reaction
+        if (hasReaction) {
+          //remove specific reaction
           response = await fetch(`/api/recordings/${filename}/reactions`, {
             method: 'DELETE',
             headers: {
+              'Content-Type': 'application/json',
               'x-viewer-id': viewerId
-            }
+            },
+            body: JSON.stringify({ reactionType })
           });
         } else {
           //add reaction
@@ -1493,7 +1501,7 @@
         
         if (data.success) {
           //update UI with new reaction data
-          updateReactionUI(filename, data.summary, data.userReaction);
+          updateReactionUI(filename, data.summary, data.userReactions);
         }
       } catch (error) {
         console.error('Failed to toggle reaction:', error);
@@ -1501,7 +1509,7 @@
     }
     
     //update reaction UI for a recording
-    function updateReactionUI(filename, summary, userReaction) {
+    function updateReactionUI(filename, summary, userReactions) {
       const container = document.querySelector(`.reactions-container[data-filename="${filename}"]`);
       if (!container) return;
       
@@ -1510,7 +1518,7 @@
       if (globalPopup.dataset.currentFilename === filename) {
         globalPopup.querySelectorAll('.reaction-option').forEach(option => {
           const reactionType = option.dataset.reaction;
-          if (userReaction === reactionType) {
+          if (userReactions?.includes(reactionType)) {
             option.classList.add('active');
           } else {
             option.classList.remove('active');
@@ -1524,8 +1532,7 @@
         //get top reactions
         const topReactions = Object.entries(summary)
           .filter(([_, count]) => count > 0)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 3);
+          .sort((a, b) => b[1] - a[1]);
         
         //calculate total
         const totalReactions = Object.values(summary).reduce((sum, count) => sum + count, 0);
@@ -1534,7 +1541,7 @@
         let badgesHTML = topReactions.map(([type, count]) => {
           const imageSrc = window.reactionTypes?.[type] || '';
           return `
-            <div class="reaction-item ${userReaction === type ? 'user-reaction' : ''}"
+            <div class="reaction-item ${userReactions?.includes(type) ? 'user-reaction' : ''}"
                  onclick="event.stopPropagation(); selectReaction('${filename}', '${type}')"
                  title="React with ${type}">
               <img src="${imageSrc}" alt="${type}" />
@@ -1594,7 +1601,7 @@
         if (data.success && data.reactions) {
           //update UI for each recording
           Object.entries(data.reactions).forEach(([filename, reactionData]) => {
-            updateReactionUI(filename, reactionData.summary, reactionData.userReaction);
+            updateReactionUI(filename, reactionData.summary, reactionData.userReactions);
           });
         }
       } catch (error) {
