@@ -206,6 +206,226 @@
         opacity: 1;
       }
     }
+    
+    /* Discreet Reaction Styles */
+    .reactions-container {
+      position: relative;
+      z-index: 1;
+    }
+    
+    .reaction-trigger {
+      @apply relative rounded-lg bg-base-200/50 hover:bg-base-200 transition-all flex items-center justify-center;
+      border: 1px solid transparent;
+      width: 2rem;
+      height: 2rem;
+      flex-shrink: 0;
+      position: relative;
+      overflow: visible;
+    }
+    
+    .reaction-trigger:hover {
+      @apply border-base-300;
+      transform: scale(1.02);
+    }
+    
+    
+      top: -0.25rem;
+      right: -0.25rem;
+      line-height: 1;
+      z-index: 10;
+    }
+    
+    .reaction-badges {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .reaction-item {
+      position: relative;
+      line-height: 1;
+    }
+    
+    .reaction-item img {
+      width: 32px;
+      height: 32px;
+      display: block;
+    }
+    
+    .reaction-item .reaction-count {
+      position: absolute;
+      bottom: -3px;
+      right: -5px;
+      background-color: rgba(0, 0, 0, 0.3);
+      color: white;
+      font-size: 9px;
+      font-weight: normal;
+      line-height: 1;
+      text-align: center;
+      border-radius: 3px;
+      padding: 1px 3px;
+      min-width: auto;
+      height: auto;
+      border: none;
+      box-shadow: none;
+    }
+    
+    /* User's own reaction styling */
+    .reaction-item.user-reaction .reaction-count {
+      background-color: rgba(59, 130, 246, 0.3); /* Blue transparent */
+    }
+    
+    /* Make reactions clickable */
+    .reaction-item {
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+    
+    .reaction-item:hover {
+      transform: scale(1.05);
+    }
+    
+    .reaction-trigger-img {
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+    }
+    
+    .reaction-option-img {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+    }
+    
+    
+    /* Reaction Popup */
+    .reaction-popup {
+      @apply fixed bg-base-100 rounded-lg shadow-xl border border-base-300 p-3;
+      z-index: 9999;
+      transform: translateX(-50%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease-out;
+    }
+    
+    .reaction-popup.show {
+      pointer-events: auto;
+      opacity: 1;
+    }
+    
+    .reaction-popup::after {
+      content: '';
+      @apply absolute -bottom-2 left-1/2 -translate-x-1/2 border-8 border-transparent border-t-base-100;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+    }
+    
+    /* Arrow pointing up when popup is below button */
+    .reaction-popup.below::after {
+      @apply -top-2 bottom-auto border-t-transparent border-b-base-100;
+    }
+    
+    .reaction-popup-inner {
+      @apply flex gap-1;
+    }
+    
+    .reaction-option {
+      @apply p-2 rounded-lg hover:bg-base-200 transition-all cursor-pointer;
+      border: 2px solid transparent;
+    }
+    
+    .reaction-option:hover {
+      transform: scale(1.1);
+    }
+    
+    .reaction-option.active {
+      @apply bg-primary/20 border-primary;
+    }
+    
+    .reaction-option-emoji {
+      font-size: 1.5rem;
+      line-height: 1;
+      display: block;
+    }
+    
+    @keyframes popup-in {
+      from { 
+        transform: translateX(-50%) translateY(-10px) scale(0.9); 
+      }
+      to { 
+        transform: translateX(-50%) translateY(0) scale(1); 
+      }
+    }
+    
+    .reaction-popup.show {
+      animation: popup-in 0.2s ease-out;
+      animation-fill-mode: forwards;
+    }
+    
+    /* Global Floating Reaction Popup */
+    .reaction-popup-global {
+      position: fixed !important;
+      background-color: var(--fallback-b1, oklch(var(--b1)));
+      border-radius: 0.75rem;
+      z-index: 9999;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 6px 10px rgba(0, 0, 0, 0.08);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      opacity: 0;
+      transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+      transform: scale(0.95);
+      pointer-events: none;
+      padding: 0.5rem;
+      width: max-content;
+      visibility: hidden;
+    }
+    
+    .reaction-popup-global.hidden {
+      display: none !important;
+    }
+    
+    .reaction-popup-global:not(.hidden) {
+      display: block !important;
+    }
+    
+    .reaction-popup-global.show {
+      opacity: 1;
+      transform: scale(1);
+      pointer-events: auto;
+      visibility: visible;
+    }
+    
+    .reaction-popup-content {
+      display: flex;
+      flex-direction: row;
+      gap: 0.25rem;
+      width: fit-content;
+    }
+    
+    .reaction-popup-global .reaction-option {
+      @apply rounded-lg hover:bg-base-200 transition-all cursor-pointer;
+      border: 2px solid transparent;
+      width: 40px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.25rem;
+      flex-shrink: 0;
+    }
+    
+    .reaction-popup-global .reaction-option:hover {
+      transform: scale(1.1);
+      background-color: var(--fallback-b2, oklch(var(--b2)));
+    }
+    
+    .reaction-popup-global .reaction-option.active {
+      @apply bg-primary/20 border-primary;
+    }
+    
+    .reaction-popup-global .reaction-option-emoji {
+      font-size: 1.25rem;
+      line-height: 1;
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -982,6 +1202,12 @@
         const response = await fetch('/api/recordings/recent');
         const data = await response.json();
         
+        //store reaction types and recordings data globally for use in other functions
+        if (data.reactionTypes) {
+          window.reactionTypes = data.reactionTypes;
+        }
+        window.lastRecordingsData = data;
+        
         const container = document.getElementById('recordingsContainer');
         const emptyState = document.getElementById('recordingsEmpty');
         
@@ -999,7 +1225,7 @@
         container.innerHTML = data.recordings.map((recording, index) => {
           const titles = formatRecordingTitle(recording.timestamp);
           return `
-          <div class="bg-base-200 rounded-xl p-4 hover-lift cursor-pointer" onclick="playRecording('${recording.videoUrl}', '${titles.pst}')">
+          <div class="bg-base-200 rounded-xl p-4 hover-lift cursor-pointer relative" onclick="playRecording('${recording.videoUrl}', '${titles.pst}')">
             <div class="relative">
               ${recording.thumbnailUrl ? `
                 <img 
@@ -1029,10 +1255,43 @@
                 </div>
               ` : ''}
             </div>
-            <div>
-              <div class="font-semibold text-sm mb-1">${titles.pst}</div>
-              <div class="text-xs text-base-content/60">${titles.local}</div>
-              <div class="text-xs text-base-content/60 mt-1">${formatTimestamp(recording.timestamp)}</div>
+            <div class="reactions-container" data-filename="${recording.filename}">
+              <div class="flex items-start justify-between gap-2">
+                <!-- Main content on the left -->
+                <div class="flex-1">
+                  <div class="font-semibold text-sm mb-1">${titles.pst}</div>
+                  <div class="text-xs text-base-content/60">${titles.local}</div>
+                  <div class="text-xs text-base-content/60 mt-1">${formatTimestamp(recording.timestamp)}</div>
+                </div>
+                
+                <!-- Add reaction button on the right -->
+                <button 
+                  class="reaction-trigger"
+                  onclick="event.stopPropagation(); showReactionPopup('${recording.filename}')"
+                  title="Add reaction"
+                >
+                  <img src="/art/reactions/add_reaction.gif" alt="Add reaction" class="reaction-trigger-img" />
+                </button>
+              </div>
+              
+              <!-- Reaction badges positioned at bottom right -->
+              <div class="reaction-badges absolute bottom-0 right-2">
+                ${(() => {
+                  const topReactions = Object.entries(recording.reactions?.summary || {})
+                    .filter(([_, count]) => count > 0)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 3);
+                  
+                  return topReactions.map(([type, count]) => `
+                    <div class="reaction-item ${recording.reactions?.userReaction === type ? 'user-reaction' : ''}" 
+                         onclick="event.stopPropagation(); selectReaction('${recording.filename}', '${type}')"
+                         title="React with ${type}">
+                      <img src="${data.reactionTypes[type]}" alt="${type}" />
+                      <span class="reaction-count">${count > 99 ? '99+' : count}</span>
+                    </div>
+                  `).join('');
+                })()}
+              </div>
             </div>
           </div>
         `;
@@ -1041,6 +1300,9 @@
       } catch (error) {
         console.error('Failed to fetch recordings:', error);
       }
+      
+      //after recordings are loaded, update reactions with user-specific data
+      setTimeout(() => updateReactionsOnly(), 100);
     }
 
     //play recording in modal
@@ -1061,6 +1323,283 @@
         video.pause();
         video.currentTime = 0;
       }, { once: true });
+    }
+
+    //show reaction popup
+    function showReactionPopup(filename) {
+      //get the global popup
+      const popup = document.getElementById('globalReactionPopup');
+      
+      //find the button that was clicked
+      const container = document.querySelector(`.reactions-container[data-filename="${filename}"]`);
+      const button = container.querySelector('.reaction-trigger');
+      const buttonRect = button.getBoundingClientRect();
+      
+      //get current recording data and user reactions
+      const recording = window.lastRecordingsData?.recordings?.find(r => r.filename === filename);
+      if (!recording || !window.reactionTypes) return;
+      
+      //populate popup content
+      const content = popup.querySelector('.reaction-popup-content');
+      content.innerHTML = Object.entries(window.reactionTypes || {}).map(([type, imageSrc]) => {
+        const isActive = recording.reactions?.userReaction === type;
+        return `
+          <button
+            class="reaction-option ${isActive ? 'active' : ''}"
+            data-reaction="${type}"
+            onclick="selectReaction('${filename}', '${type}')"
+            title="${type}"
+          >
+            <img src="${imageSrc}" alt="${type}" class="reaction-option-img" />
+          </button>
+        `;
+      }).join('');
+      
+      //store current filename
+      popup.dataset.currentFilename = filename;
+      
+      //reset any existing styles
+      popup.style.position = 'fixed';
+      popup.style.left = '-9999px';
+      popup.style.top = '-9999px';
+      
+      //temporarily show popup off-screen to measure its size
+      popup.classList.remove('hidden');
+      popup.style.visibility = 'hidden';
+      
+      //force layout to get accurate dimensions
+      popup.offsetHeight;
+      
+      //get actual popup dimensions
+      const popupRect = popup.getBoundingClientRect();
+      const popupHeight = popupRect.height;
+      const popupWidth = popupRect.width;
+      
+      //position popup to the left of the button
+      let left = buttonRect.left - popupWidth - 8;
+      
+      //center vertically with the button
+      let top = buttonRect.top + (buttonRect.height / 2) - (popupHeight / 2);
+      
+      //check if popup would go off left edge of viewport
+      if (left < 10) {
+        //show to the right of button instead
+        left = buttonRect.right + 8;
+      }
+      
+      //ensure popup stays within viewport bounds
+      left = Math.max(10, Math.min(left, window.innerWidth - popupWidth - 10));
+      top = Math.max(10, Math.min(top, window.innerHeight - popupHeight - 10));
+      
+      //apply final position
+      popup.style.left = left + 'px';
+      popup.style.top = top + 'px';
+      
+      console.log('Popup positioning:', {
+        buttonRect: buttonRect,
+        popupWidth: popupWidth,
+        popupHeight: popupHeight,
+        finalLeft: left,
+        finalTop: top
+      });
+      
+      //make visible after position is set
+      requestAnimationFrame(() => {
+        popup.style.visibility = 'visible';
+        popup.classList.add('show');
+      });
+      
+      //add click outside handler
+      setTimeout(() => {
+        const clickHandler = (e) => {
+          //don't hide if clicking on the trigger button or inside popup
+          if (e.target.closest('.reaction-trigger') || e.target.closest('.reaction-popup-global')) {
+            return;
+          }
+          hideAllPopups();
+        };
+        document.addEventListener('click', clickHandler);
+        //store handler reference for proper cleanup
+        popup._clickHandler = clickHandler;
+      }, 100);
+    }
+    
+    //hide all reaction popups
+    function hideAllPopups(e) {
+      //don't hide if clicking inside a popup
+      if (e && e.target.closest('.reaction-popup-global')) return;
+      
+      const popup = document.getElementById('globalReactionPopup');
+      popup.classList.remove('show');
+      
+      //wait for animation to complete before hiding
+      setTimeout(() => {
+        popup.classList.add('hidden');
+        popup.dataset.currentFilename = '';
+      }, 200);
+      
+      //clean up stored click handler
+      if (popup._clickHandler) {
+        document.removeEventListener('click', popup._clickHandler);
+        delete popup._clickHandler;
+      }
+    }
+    
+    //select a reaction from the popup
+    async function selectReaction(filename, reactionType) {
+      //hide popup
+      hideAllPopups();
+      
+      //toggle the reaction
+      await toggleReaction(filename, reactionType);
+    }
+    
+    //toggle reaction on a recording
+    async function toggleReaction(filename, reactionType) {
+      const viewerId = getOrCreateViewerId();
+      const popup = document.getElementById('globalReactionPopup');
+      const option = popup.querySelector(`.reaction-option[data-reaction="${reactionType}"]`);
+      const isActive = option.classList.contains('active');
+      
+      //add animation to the trigger button
+      const container = document.querySelector(`.reactions-container[data-filename="${filename}"]`);
+      const trigger = container.querySelector('.reaction-trigger');
+      trigger.style.animation = 'none';
+      setTimeout(() => trigger.style.animation = '', 10);
+      
+      try {
+        let response;
+        if (isActive) {
+          //remove reaction
+          response = await fetch(`/api/recordings/${filename}/reactions`, {
+            method: 'DELETE',
+            headers: {
+              'x-viewer-id': viewerId
+            }
+          });
+        } else {
+          //add reaction
+          response = await fetch(`/api/recordings/${filename}/reactions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-viewer-id': viewerId
+            },
+            body: JSON.stringify({ reaction: reactionType })
+          });
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          //update UI with new reaction data
+          updateReactionUI(filename, data.summary, data.userReaction);
+        }
+      } catch (error) {
+        console.error('Failed to toggle reaction:', error);
+      }
+    }
+    
+    //update reaction UI for a recording
+    function updateReactionUI(filename, summary, userReaction) {
+      const container = document.querySelector(`.reactions-container[data-filename="${filename}"]`);
+      if (!container) return;
+      
+      //update global popup if it's showing this recording's reactions
+      const globalPopup = document.getElementById('globalReactionPopup');
+      if (globalPopup.dataset.currentFilename === filename) {
+        globalPopup.querySelectorAll('.reaction-option').forEach(option => {
+          const reactionType = option.dataset.reaction;
+          if (userReaction === reactionType) {
+            option.classList.add('active');
+          } else {
+            option.classList.remove('active');
+          }
+        });
+      }
+      
+      //update reaction badges
+      const badgesContainer = container.querySelector('.reaction-badges');
+      if (badgesContainer) {
+        //get top reactions
+        const topReactions = Object.entries(summary)
+          .filter(([_, count]) => count > 0)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3);
+        
+        //calculate total
+        const totalReactions = Object.values(summary).reduce((sum, count) => sum + count, 0);
+        
+        //rebuild badges HTML
+        let badgesHTML = topReactions.map(([type, count]) => {
+          const imageSrc = window.reactionTypes?.[type] || '';
+          return `
+            <div class="reaction-item ${userReaction === type ? 'user-reaction' : ''}"
+                 onclick="event.stopPropagation(); selectReaction('${filename}', '${type}')"
+                 title="React with ${type}">
+              <img src="${imageSrc}" alt="${type}" />
+              <span class="reaction-count">${count > 99 ? '99+' : count}</span>
+            </div>
+          `;
+        }).join('');
+        
+        
+        badgesContainer.innerHTML = badgesHTML;
+      }
+    }
+    
+    //helper to get reaction image
+    function getReactionImage(type) {
+      const imageMap = {
+        sleeping: '/art/reactions/ChickenSleeping.gif',
+        peck: '/art/reactions/ChickenPeck.gif',
+        fly: '/art/reactions/ChickenFly.gif',
+        jump: '/art/reactions/ChickenJump.gif',
+        love: '/art/reactions/ChickenLove.gif'
+      };
+      return imageMap[type] || '/art/reactions/ChickenLove.gif';
+    }
+    
+    //get or create viewer ID for anonymous tracking
+    function getOrCreateViewerId() {
+      let viewerId = localStorage.getItem('viewerId');
+      if (!viewerId) {
+        //generate unique viewer ID
+        viewerId = 'viewer_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('viewerId', viewerId);
+      }
+      return viewerId;
+    }
+    
+    //update only reactions for all visible recordings
+    async function updateReactionsOnly() {
+      const containers = document.querySelectorAll('.reactions-container');
+      if (containers.length === 0) return;
+      
+      const filenames = Array.from(containers).map(c => c.dataset.filename);
+      const viewerId = getOrCreateViewerId();
+      
+      try {
+        const response = await fetch('/api/recordings/reactions/batch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-viewer-id': viewerId
+          },
+          body: JSON.stringify({ filenames })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.reactions) {
+          //update UI for each recording
+          Object.entries(data.reactions).forEach(([filename, reactionData]) => {
+            updateReactionUI(filename, reactionData.summary, reactionData.userReaction);
+          });
+        }
+      } catch (error) {
+        console.error('Failed to update reactions:', error);
+      }
     }
 
     //toggle fullscreen mode
@@ -1358,6 +1897,14 @@
     setInterval(checkFlashlightStatus, 5000);
     setInterval(updateRecordings, 30000); //update recordings every 30 seconds
     setInterval(checkPauseStatus, 5000); //check pause status every 5 seconds
+    setInterval(updateReactionsOnly, 10000); //update reactions every 10 seconds for more responsiveness
   </script>
+  
+  <!-- Global Reaction Popup -->
+  <div id="globalReactionPopup" class="reaction-popup-global hidden" data-current-filename="" style="left: -9999px; top: -9999px;">
+    <div class="reaction-popup-content">
+      <!-- Dynamically populated reaction options -->
+    </div>
+  </div>
 </body>
 </html>

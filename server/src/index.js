@@ -13,6 +13,7 @@ import { fetchWeatherData, getCacheStatus } from './services/weatherService.js';
 import MotionDetectionService from './services/motionDetectionService.js';
 import RecordingService from './services/recordingService.js';
 import ThumbnailService from './services/thumbnailService.js';
+import ReactionService, { REACTION_TYPES } from './services/reactionService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -42,6 +43,9 @@ app.use(express.json());
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// Serve art assets
+app.use('/art', express.static(path.join(__dirname, '..', '..', 'art')));
+
 // Create MJPEG proxy instance
 const mjpegProxy = new MjpegProxy(DROIDCAM_URL, {
   disableAutoConnect: process.env.NODE_ENV === 'test'
@@ -69,6 +73,10 @@ if (config.recording.enabled) {
 // Create thumbnail service
 const thumbnailService = new ThumbnailService();
 console.log('[Server] Thumbnail service created');
+
+// Create reaction service
+const reactionService = new ReactionService(config);
+console.log('[Server] Reaction service created');
 
 // SSE client management
 const sseClients = new Set();
@@ -645,21 +653,36 @@ app.get('/api/droidcam-status', async (req, res) => {
 app.get('/api/recordings/recent', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 3;
+    const userId = req.cookies?.viewerId || req.headers['x-viewer-id'];
     const recordings = await thumbnailService.getRecentRecordings(config.recording.outputDir, limit);
     
-    // Transform paths to relative URLs
+    // Get reactions for all recordings
+    const filenames = recordings.map(rec => rec.filename);
+    const reactionsData = await reactionService.getMultipleReactions(filenames, userId);
+    
+    // Transform paths to relative URLs and include reactions
     const recordingsWithUrls = recordings.map(rec => ({
       ...rec,
       thumbnailUrl: rec.thumbnailExists ? `/api/recordings/thumbnail/${encodeURIComponent(rec.filename)}` : null,
       videoUrl: `/api/recordings/video/${encodeURIComponent(rec.filename)}`,
       // Calculate duration from metadata if available
       duration: rec.metadata.endTime && rec.metadata.startTime ? 
-        Math.round((new Date(rec.metadata.endTime) - new Date(rec.metadata.startTime)) / 1000) : null
+        Math.round((new Date(rec.metadata.endTime) - new Date(rec.metadata.startTime)) / 1000) : null,
+      // Include reaction data
+      reactions: reactionsData[rec.filename] || {
+        summary: Object.keys(REACTION_TYPES).reduce((acc, type) => {
+          acc[type] = 0;
+          return acc;
+        }, {}),
+        totalReactions: 0,
+        userReaction: null
+      }
     }));
     
     res.json({
       success: true,
-      recordings: recordingsWithUrls
+      recordings: recordingsWithUrls,
+      reactionTypes: REACTION_TYPES
     });
   } catch (error) {
     console.error('[Recordings API] Error getting recent recordings:', error);
@@ -762,6 +785,121 @@ app.get('/api/recordings/video/:filename', async (req, res) => {
   } catch (error) {
     console.error('[Video API] Error serving video:', error);
     res.status(500).json({ error: 'Failed to serve video' });
+  }
+});
+
+// Reaction API endpoints
+// Get reactions for a recording
+app.get('/api/recordings/:filename/reactions', async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const userId = req.cookies?.viewerId || req.headers['x-viewer-id'];
+    
+    const reactions = await reactionService.getReactions(filename, userId);
+    
+    res.json({
+      success: true,
+      ...reactions,
+      reactionTypes: REACTION_TYPES
+    });
+  } catch (error) {
+    console.error('[Reactions API] Error getting reactions:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get reactions',
+      message: error.message
+    });
+  }
+});
+
+// Add or update a reaction
+app.post('/api/recordings/:filename/reactions', async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const { reaction } = req.body;
+    const userId = req.cookies?.viewerId || req.headers['x-viewer-id'];
+    
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'User identification required',
+        message: 'Please enable cookies or provide viewer ID'
+      });
+    }
+    
+    if (!reaction || !REACTION_TYPES[reaction]) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid reaction type',
+        validTypes: Object.keys(REACTION_TYPES)
+      });
+    }
+    
+    const result = await reactionService.addReaction(filename, userId, reaction);
+    res.json(result);
+  } catch (error) {
+    console.error('[Reactions API] Error adding reaction:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to add reaction',
+      message: error.message
+    });
+  }
+});
+
+// Remove a reaction
+app.delete('/api/recordings/:filename/reactions', async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const userId = req.cookies?.viewerId || req.headers['x-viewer-id'];
+    
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'User identification required'
+      });
+    }
+    
+    const result = await reactionService.removeReaction(filename, userId);
+    res.json(result);
+  } catch (error) {
+    console.error('[Reactions API] Error removing reaction:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to remove reaction',
+      message: error.message
+    });
+  }
+});
+
+// Get reactions for multiple recordings (batch)
+app.post('/api/recordings/reactions/batch', async (req, res) => {
+  try {
+    const { filenames } = req.body;
+    const userId = req.cookies?.viewerId || req.headers['x-viewer-id'];
+    
+    if (!filenames || !Array.isArray(filenames)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid request',
+        message: 'filenames array required'
+      });
+    }
+    
+    const reactions = await reactionService.getMultipleReactions(filenames, userId);
+    
+    res.json({
+      success: true,
+      reactions,
+      reactionTypes: REACTION_TYPES
+    });
+  } catch (error) {
+    console.error('[Reactions API] Error getting batch reactions:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get reactions',
+      message: error.message
+    });
   }
 });
 

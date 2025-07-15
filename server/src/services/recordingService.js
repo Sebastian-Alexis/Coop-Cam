@@ -4,6 +4,7 @@ import path from 'path';
 import CircularBufferService from './circularBufferService.js';
 import VideoEncoderService from './videoEncoderService.js';
 import { config } from '../config.js';
+import ReactionService from './reactionService.js';
 
 //recording service state machine states
 const RecordingState = {
@@ -37,6 +38,7 @@ class RecordingService {
       this.config.fps
     );
     this.videoEncoder = new VideoEncoderService(config);
+    this.reactionService = new ReactionService(config);
     
     //frame listener reference for cleanup
     this.frameListener = null;
@@ -332,6 +334,19 @@ class RecordingService {
         console.error(`[Recording] Failed to delete ${file.type}: ${file.path}`, error);
         deletionResults.push({ file: file.path, success: false, error: error.message });
       }
+    }
+    
+    //delete reactions for this recording
+    try {
+      const videoFilename = path.basename(videoPath);
+      const reactionsDeleted = await this.reactionService.deleteReactions(videoFilename);
+      if (reactionsDeleted) {
+        console.log(`[Recording] Deleted reactions for ${videoFilename}`);
+        deletionResults.push({ file: 'reactions', success: true });
+      }
+    } catch (error) {
+      console.error(`[Recording] Failed to delete reactions:`, error);
+      deletionResults.push({ file: 'reactions', success: false, error: error.message });
     }
     
     return deletionResults;
