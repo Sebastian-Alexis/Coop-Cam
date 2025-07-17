@@ -9,6 +9,7 @@ const req = http.get(DROIDCAM_URL, (res) => {
   console.log(`Status: ${res.statusCode}`);
   console.log(`Content-Type: ${res.headers['content-type']}`);
   console.log(`Headers:`, res.headers);
+  // console.log(`Body:`, res.body);
   
   if (res.headers['content-type']?.includes('text/html')) {
     console.log('\n❌ DroidCam returned HTML - it\'s not streaming video!');
@@ -37,7 +38,8 @@ const req = http.get(DROIDCAM_URL, (res) => {
     totalBytes += chunk.length;
     buffer = Buffer.concat([buffer, chunk]);
     
-    // Look for JPEG frames
+    //look for any jpeg frames, need this for mjpeg proxy. basically grabbing each frame and replaying it
+    //just bc droidcam only allows 1 client at a time, this proxy is needed
     while (true) {
       const jpegStart = buffer.indexOf(Buffer.from([0xFF, 0xD8]));
       if (jpegStart === -1) break;

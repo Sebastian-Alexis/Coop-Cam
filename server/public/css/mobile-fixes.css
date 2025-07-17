@@ -1,0 +1,247 @@
+/* Mobile Optimization - Phase 1: Critical Fixes */
+/* Created as part of comprehensive mobile optimization plan */
+
+/* ========================================
+   1. TOUCH TARGET OPTIMIZATION (44x44px minimum)
+   ======================================== */
+
+/* Fix small buttons throughout the app */
+.btn-sm, 
+.btn-ghost.btn-sm,
+.navbar .btn-sm {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.75rem 1rem;
+}
+
+/* Reaction system touch targets */
+.reaction-trigger {
+  width: 44px !important;
+  height: 44px !important;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reaction-trigger-img {
+  width: 32px;
+  height: 32px;
+}
+
+.reaction-item {
+  padding: 6px;
+  min-width: 44px;
+  min-height: 44px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Reaction popup options need larger touch targets */
+.reaction-option {
+  min-width: 44px !important;
+  min-height: 44px !important;
+}
+
+/* Carousel controls - expand touch area without changing visual size */
+.carousel-dot {
+  position: relative;
+  cursor: pointer;
+}
+
+.carousel-dot::before {
+  content: '';
+  position: absolute;
+  top: -18px;
+  left: -18px;
+  right: -18px;
+  bottom: -18px;
+  z-index: 1;
+}
+
+/* Links need touch-friendly padding */
+a.link {
+  padding: 12px;
+  margin: -12px;
+  display: inline-block;
+  position: relative;
+}
+
+/* ========================================
+   2. LAYOUT & POSITIONING FIXES
+   ======================================== */
+
+/* Prevent motion panel from going off-screen */
+.motion-panel {
+  max-width: calc(100vw - 2rem);
+}
+
+@media (max-width: 640px) {
+  .motion-panel {
+    width: calc(100vw - 2rem) !important;
+    right: 1rem !important;
+    top: auto !important;
+    bottom: 4rem;
+    max-height: 50vh;
+  }
+}
+
+/* Fix z-index stacking order */
+.navbar { 
+  z-index: 100; 
+}
+
+.motion-panel { 
+  z-index: 200; 
+}
+
+.modal,
+.modal-backdrop { 
+  z-index: 300; 
+}
+
+.reaction-popup-global { 
+  z-index: 400 !important; 
+}
+
+.motion-toast { 
+  z-index: 500; 
+}
+
+/* Fix reaction popup positioning on mobile */
+@media (max-width: 768px) {
+  .reaction-popup-global {
+    position: fixed !important;
+    bottom: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, 50%) !important;
+    width: 90vw !important;
+    max-width: 320px !important;
+  }
+  
+  .reaction-popup-content {
+    justify-content: space-around !important;
+  }
+}
+
+/* ========================================
+   3. MOBILE VISIBILITY FIXES
+   ======================================== */
+
+/* Always show controls on touch devices */
+@media (hover: none), (pointer: coarse) {
+  /* Fullscreen button always visible */
+  .fullscreen-btn {
+    opacity: 0.9 !important;
+    visibility: visible !important;
+    background: rgba(0, 0, 0, 0.7) !important;
+  }
+  
+  /* Carousel navigation always visible */
+  .carousel-btn:not(:disabled) {
+    opacity: 0.8 !important;
+  }
+  
+  .carousel-indicators {
+    opacity: 1 !important;
+  }
+  
+  /* Remove hover-only states */
+  .hover-lift:hover {
+    transform: none;
+  }
+}
+
+/* ========================================
+   4. FORM INPUT OPTIMIZATIONS
+   ======================================== */
+
+/* Prevent zoom on input focus */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="tel"],
+input[type="url"],
+textarea,
+select {
+  font-size: 16px !important; /* Prevents zoom on iOS */
+  min-height: 44px;
+  padding: 12px;
+}
+
+/* Touch-friendly form controls */
+.checkbox,
+.radio {
+  width: 24px;
+  height: 24px;
+  margin: 10px; /* Expand touch area */
+}
+
+/* ========================================
+   5. MOBILE-SPECIFIC IMPROVEMENTS
+   ======================================== */
+
+/* Better spacing on mobile */
+@media (max-width: 640px) {
+  /* Add padding to prevent edge touches */
+  .container-padding {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  
+  /* Stack buttons vertically on very small screens */
+  .navbar-end {
+    gap: 0.5rem;
+  }
+  
+  /* Improve motion toast positioning */
+  .motion-toast {
+    bottom: 1rem !important;
+    right: 1rem !important;
+    left: 1rem !important;
+    max-width: none !important;
+  }
+}
+
+/* Remove tap highlight on interactive elements */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Ensure smooth scrolling */
+html {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent text selection on buttons */
+.btn,
+button {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ========================================
+   6. PERFORMANCE OPTIMIZATIONS
+   ======================================== */
+
+/* Use GPU acceleration for animations */
+.carousel-track,
+.motion-panel,
+.reaction-popup-global {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

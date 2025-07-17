@@ -2,10 +2,34 @@
 <html lang="en" data-theme="caramellatte">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>About - Alexis Family Coop</title>
+
+    <!-- Resource Hints for Performance -->
+    <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+    
+    <!-- Prefetch JavaScript modules that will be needed -->
+    <link rel="prefetch" href="/js/modules/stream-manager.js" as="script">
+    <link rel="prefetch" href="/js/modules/flashlight-control.js" as="script">
+    <link rel="prefetch" href="/js/modules/weather-widget.js" as="script">
+    <link rel="prefetch" href="/js/modules/carousel.js" as="script">
+    
+    <!-- Prefetch commonly viewed images -->
+    <link rel="prefetch" href="/images/chickens/marshmallow/marshmallow-1-md.webp" as="image">
+    <link rel="prefetch" href="/images/chickens/charcoal/charcoal-1-md.webp" as="image">
+    
+    <!-- Additional performance optimizations -->
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    
+    <!-- Preload mobile CSS fixes -->
+    <link rel="preload" href="/css/mobile-fixes.css" as="style">
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com" defer></script>
+  <link href="/css/mobile-fixes.css" rel="stylesheet" type="text/css" />
   <style>
     /* Custom caramellatte theme */
     [data-theme="caramellatte"] {
@@ -344,6 +368,103 @@
       }
     }
   </style>
+    <style id="critical-css">
+/* Critical CSS - Inline for fast initial render */
+
+/* Base reset and system fonts */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Prevent layout shift */
+img, video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Critical utility classes from Tailwind that are used above-the-fold */
+.min-h-screen { min-height: 100vh; }
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.relative { position: relative; }
+.fixed { position: fixed; }
+.absolute { position: absolute; }
+.top-0 { top: 0; }
+.left-0 { left: 0; }
+.right-0 { right: 0; }
+.w-full { width: 100%; }
+.max-w-7xl { max-width: 80rem; }
+.mx-auto { margin-left: auto; margin-right: auto; }
+.p-4 { padding: 1rem; }
+.px-4 { padding-left: 1rem; padding-right: 1rem; }
+.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.mb-4 { margin-bottom: 1rem; }
+.text-center { text-align: center; }
+.rounded-lg { border-radius: 0.5rem; }
+.shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+
+/* Critical button styles - structure only, no colors */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  cursor: pointer;
+  min-height: 3rem;
+  min-width: 3rem;
+  text-decoration: none;
+}
+
+/* Hide elements until JS loads */
+.js-only {
+  display: none;
+}
+
+/* Stream container critical styles */
+.video-container {
+  aspect-ratio: 16/9;
+  background-color: #000;
+  position: relative;
+  overflow: hidden;
+}
+
+#stream {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Loading state */
+.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Mobile-specific critical styles */
+@media (max-width: 768px) {
+  .p-4 { padding: 0.75rem; }
+  .text-4xl { font-size: 2rem; }
+  .gap-4 { gap: 0.75rem; }
+}
+    </style>
+
+    <!-- Preload critical resources -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/daisyui@4.12.22/dist/full.min.css" as="style">
+    <link rel="preload" href="/js/app.js" as="script" crossorigin>
 </head>
 <body>
   <div class="min-h-screen bg-base-100 flex flex-col">
@@ -420,28 +541,52 @@
                   <!-- Marshmallow -->
                   <article id="marshmallow" class="chicken-profile">
                     <h3 class="text-2xl font-bold">Marshmallow</h3>
-                    <p class="text-sm italic text-gray-600 mb-3">Chicken</p>
+                    <p class="text-sm italic text-gray-600 mb-3">Rooster</p>
                     <div class="carousel-wrapper">
                       <div class="carousel-container" data-carousel="marshmallow">
                         <div class="carousel-inner">
                           <div class="carousel-track">
                             <div class="carousel-item active">
-                              <img src="/images/chickens/marshmallow/marshmallow-1.jpg" alt="Marshmallow the chicken - photo 1" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/marshmallow/marshmallow-1-sm.webp 320w, /images/chickens/marshmallow/marshmallow-1-md.webp 640w, /images/chickens/marshmallow/marshmallow-1-lg.webp 1024w, /images/chickens/marshmallow/marshmallow-1-xl.webp 1920w, /images/chickens/marshmallow/marshmallow-1.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/marshmallow/marshmallow-1-sm.jpg 320w, /images/chickens/marshmallow/marshmallow-1-md.jpg 640w, /images/chickens/marshmallow/marshmallow-1-lg.jpg 1024w, /images/chickens/marshmallow/marshmallow-1-xl.jpg 1920w, /images/chickens/marshmallow/marshmallow-1.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/marshmallow/marshmallow-1.jpg" alt="Marshmallow the chicken - photo 1" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/marshmallow/marshmallow-2.jpg" alt="Marshmallow the chicken - photo 2" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/marshmallow/marshmallow-2-sm.webp 320w, /images/chickens/marshmallow/marshmallow-2-md.webp 640w, /images/chickens/marshmallow/marshmallow-2-lg.webp 1024w, /images/chickens/marshmallow/marshmallow-2-xl.webp 1920w, /images/chickens/marshmallow/marshmallow-2.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/marshmallow/marshmallow-2-sm.jpg 320w, /images/chickens/marshmallow/marshmallow-2-md.jpg 640w, /images/chickens/marshmallow/marshmallow-2-lg.jpg 1024w, /images/chickens/marshmallow/marshmallow-2-xl.jpg 1920w, /images/chickens/marshmallow/marshmallow-2.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/marshmallow/marshmallow-2.jpg" alt="Marshmallow the chicken - photo 2" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/marshmallow/marshmallow-3.jpg" alt="Marshmallow the chicken - photo 3" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/marshmallow/marshmallow-3-sm.webp 320w, /images/chickens/marshmallow/marshmallow-3-md.webp 640w, /images/chickens/marshmallow/marshmallow-3-lg.webp 1024w, /images/chickens/marshmallow/marshmallow-3-xl.webp 1920w, /images/chickens/marshmallow/marshmallow-3.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/marshmallow/marshmallow-3-sm.jpg 320w, /images/chickens/marshmallow/marshmallow-3-md.jpg 640w, /images/chickens/marshmallow/marshmallow-3-lg.jpg 1024w, /images/chickens/marshmallow/marshmallow-3-xl.jpg 1920w, /images/chickens/marshmallow/marshmallow-3.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/marshmallow/marshmallow-3.jpg" alt="Marshmallow the chicken - photo 3" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/marshmallow/IMG_0790.jpg" alt="Marshmallow the chicken - photo 4" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/marshmallow/IMG_0790-sm.webp 320w, /images/chickens/marshmallow/IMG_0790-md.webp 640w, /images/chickens/marshmallow/IMG_0790-lg.webp 1024w, /images/chickens/marshmallow/IMG_0790-xl.webp 1920w, /images/chickens/marshmallow/IMG_0790.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/marshmallow/IMG_0790-sm.jpg 320w, /images/chickens/marshmallow/IMG_0790-md.jpg 640w, /images/chickens/marshmallow/IMG_0790-lg.jpg 1024w, /images/chickens/marshmallow/IMG_0790-xl.jpg 1920w, /images/chickens/marshmallow/IMG_0790.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/marshmallow/IMG_0790.jpg" alt="Marshmallow the chicken - photo 4" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/marshmallow/IMG_0806.jpg" alt="Marshmallow the chicken - photo 5" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/marshmallow/IMG_0806-sm.webp 320w, /images/chickens/marshmallow/IMG_0806-md.webp 640w, /images/chickens/marshmallow/IMG_0806-lg.webp 1024w, /images/chickens/marshmallow/IMG_0806-xl.webp 1920w, /images/chickens/marshmallow/IMG_0806.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/marshmallow/IMG_0806-sm.jpg 320w, /images/chickens/marshmallow/IMG_0806-md.jpg 640w, /images/chickens/marshmallow/IMG_0806-lg.jpg 1024w, /images/chickens/marshmallow/IMG_0806-xl.jpg 1920w, /images/chickens/marshmallow/IMG_0806.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/marshmallow/IMG_0806.jpg" alt="Marshmallow the chicken - photo 5" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/marshmallow/IMG_0807.jpg" alt="Marshmallow the chicken - photo 6" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/marshmallow/IMG_0807-sm.webp 320w, /images/chickens/marshmallow/IMG_0807-md.webp 640w, /images/chickens/marshmallow/IMG_0807-lg.webp 1024w, /images/chickens/marshmallow/IMG_0807-xl.webp 1920w, /images/chickens/marshmallow/IMG_0807.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/marshmallow/IMG_0807-sm.jpg 320w, /images/chickens/marshmallow/IMG_0807-md.jpg 640w, /images/chickens/marshmallow/IMG_0807-lg.jpg 1024w, /images/chickens/marshmallow/IMG_0807-xl.jpg 1920w, /images/chickens/marshmallow/IMG_0807.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/marshmallow/IMG_0807.jpg" alt="Marshmallow the chicken - photo 6" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                           </div>
                         </div>
@@ -459,7 +604,7 @@
                       </div>
                     </div>
                     <p class="text-base mt-4">
-                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
+                      Marshmallow is a rooster, and was originally named when he was a much purer shade of white. Since then, he has grown darker features, giving him a nice look. He is generally pretty comfortable with people, but if you try to pick up any of his hens, he can get pretty protective, and even try chasing or pecking at you.
                     </p>
                   </article>
                   
@@ -468,28 +613,52 @@
                   <!-- Charcoal -->
                   <article id="charcoal" class="chicken-profile">
                     <h3 class="text-2xl font-bold">Charcoal</h3>
-                    <p class="text-sm italic text-gray-600 mb-3">Chicken</p>
+                    <p class="text-sm italic text-gray-600 mb-3">Hen</p>
                     <div class="carousel-wrapper">
                       <div class="carousel-container" data-carousel="charcoal">
                         <div class="carousel-inner">
                           <div class="carousel-track">
                             <div class="carousel-item active">
-                              <img src="/images/chickens/charcoal/charcoal-1.jpg" alt="Charcoal the chicken - photo 1" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/charcoal/charcoal-1-sm.webp 320w, /images/chickens/charcoal/charcoal-1-md.webp 640w, /images/chickens/charcoal/charcoal-1-lg.webp 1024w, /images/chickens/charcoal/charcoal-1-xl.webp 1920w, /images/chickens/charcoal/charcoal-1.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/charcoal/charcoal-1-sm.jpg 320w, /images/chickens/charcoal/charcoal-1-md.jpg 640w, /images/chickens/charcoal/charcoal-1-lg.jpg 1024w, /images/chickens/charcoal/charcoal-1-xl.jpg 1920w, /images/chickens/charcoal/charcoal-1.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/charcoal/charcoal-1.jpg" alt="Charcoal the chicken - photo 1" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/charcoal/charcoal-2.jpg" alt="Charcoal the chicken - photo 2" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/charcoal/charcoal-2-sm.webp 320w, /images/chickens/charcoal/charcoal-2-md.webp 640w, /images/chickens/charcoal/charcoal-2-lg.webp 1024w, /images/chickens/charcoal/charcoal-2-xl.webp 1920w, /images/chickens/charcoal/charcoal-2.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/charcoal/charcoal-2-sm.jpg 320w, /images/chickens/charcoal/charcoal-2-md.jpg 640w, /images/chickens/charcoal/charcoal-2-lg.jpg 1024w, /images/chickens/charcoal/charcoal-2-xl.jpg 1920w, /images/chickens/charcoal/charcoal-2.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/charcoal/charcoal-2.jpg" alt="Charcoal the chicken - photo 2" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/charcoal/charcoal-3.jpg" alt="Charcoal the chicken - photo 3" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/charcoal/charcoal-3-sm.webp 320w, /images/chickens/charcoal/charcoal-3-md.webp 640w, /images/chickens/charcoal/charcoal-3-lg.webp 1024w, /images/chickens/charcoal/charcoal-3-xl.webp 1920w, /images/chickens/charcoal/charcoal-3.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/charcoal/charcoal-3-sm.jpg 320w, /images/chickens/charcoal/charcoal-3-md.jpg 640w, /images/chickens/charcoal/charcoal-3-lg.jpg 1024w, /images/chickens/charcoal/charcoal-3-xl.jpg 1920w, /images/chickens/charcoal/charcoal-3.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/charcoal/charcoal-3.jpg" alt="Charcoal the chicken - photo 3" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/charcoal/IMG_0803.jpg" alt="Charcoal the chicken - photo 4" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/charcoal/IMG_0803-sm.webp 320w, /images/chickens/charcoal/IMG_0803-md.webp 640w, /images/chickens/charcoal/IMG_0803-lg.webp 1024w, /images/chickens/charcoal/IMG_0803-xl.webp 1920w, /images/chickens/charcoal/IMG_0803.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/charcoal/IMG_0803-sm.jpg 320w, /images/chickens/charcoal/IMG_0803-md.jpg 640w, /images/chickens/charcoal/IMG_0803-lg.jpg 1024w, /images/chickens/charcoal/IMG_0803-xl.jpg 1920w, /images/chickens/charcoal/IMG_0803.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/charcoal/IMG_0803.jpg" alt="Charcoal the chicken - photo 4" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/charcoal/IMG_0804.jpg" alt="Charcoal the chicken - photo 5" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/charcoal/IMG_0804-sm.webp 320w, /images/chickens/charcoal/IMG_0804-md.webp 640w, /images/chickens/charcoal/IMG_0804-lg.webp 1024w, /images/chickens/charcoal/IMG_0804-xl.webp 1920w, /images/chickens/charcoal/IMG_0804.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/charcoal/IMG_0804-sm.jpg 320w, /images/chickens/charcoal/IMG_0804-md.jpg 640w, /images/chickens/charcoal/IMG_0804-lg.jpg 1024w, /images/chickens/charcoal/IMG_0804-xl.jpg 1920w, /images/chickens/charcoal/IMG_0804.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/charcoal/IMG_0804.jpg" alt="Charcoal the chicken - photo 5" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/charcoal/IMG_0809.jpg" alt="Charcoal the chicken - photo 6" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/charcoal/IMG_0809-sm.webp 320w, /images/chickens/charcoal/IMG_0809-md.webp 640w, /images/chickens/charcoal/IMG_0809-lg.webp 1024w, /images/chickens/charcoal/IMG_0809-xl.webp 1920w, /images/chickens/charcoal/IMG_0809.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/charcoal/IMG_0809-sm.jpg 320w, /images/chickens/charcoal/IMG_0809-md.jpg 640w, /images/chickens/charcoal/IMG_0809-lg.jpg 1024w, /images/chickens/charcoal/IMG_0809-xl.jpg 1920w, /images/chickens/charcoal/IMG_0809.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/charcoal/IMG_0809.jpg" alt="Charcoal the chicken - photo 6" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                           </div>
                         </div>
@@ -507,7 +676,7 @@
                       </div>
                     </div>
                     <p class="text-base mt-4">
-                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
+                      Charcoal is a hen named after her distinctive black/grey body which transitions into a vibrant orange on her next, like glowing coals. She loves following her sisters, and enjoys pecking at anything green.
                     </p>
                   </article>
                   
@@ -516,19 +685,31 @@
                   <!-- UV -->
                   <article id="uv" class="chicken-profile">
                     <h3 class="text-2xl font-bold">UV</h3>
-                    <p class="text-sm italic text-gray-600 mb-3">Chicken</p>
+                    <p class="text-sm italic text-gray-600 mb-3">Hen</p>
                     <div class="carousel-wrapper">
                       <div class="carousel-container" data-carousel="uv">
                         <div class="carousel-inner">
                           <div class="carousel-track">
                             <div class="carousel-item active">
-                              <img src="/images/chickens/uv/uv-1.jpg" alt="UV the chicken - photo 1" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/uv/uv-1-sm.webp 320w, /images/chickens/uv/uv-1-md.webp 640w, /images/chickens/uv/uv-1-lg.webp 1024w, /images/chickens/uv/uv-1-xl.webp 1920w, /images/chickens/uv/uv-1.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/uv/uv-1-sm.jpg 320w, /images/chickens/uv/uv-1-md.jpg 640w, /images/chickens/uv/uv-1-lg.jpg 1024w, /images/chickens/uv/uv-1-xl.jpg 1920w, /images/chickens/uv/uv-1.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/uv/uv-1.jpg" alt="UV the chicken - photo 1" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/uv/uv-2.jpg" alt="UV the chicken - photo 2" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/uv/uv-2-sm.webp 320w, /images/chickens/uv/uv-2-md.webp 640w, /images/chickens/uv/uv-2-lg.webp 1024w, /images/chickens/uv/uv-2-xl.webp 1920w, /images/chickens/uv/uv-2.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/uv/uv-2-sm.jpg 320w, /images/chickens/uv/uv-2-md.jpg 640w, /images/chickens/uv/uv-2-lg.jpg 1024w, /images/chickens/uv/uv-2-xl.jpg 1920w, /images/chickens/uv/uv-2.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/uv/uv-2.jpg" alt="UV the chicken - photo 2" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/uv/uv-3.jpg" alt="UV the chicken - photo 3" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/uv/uv-3-sm.webp 320w, /images/chickens/uv/uv-3-md.webp 640w, /images/chickens/uv/uv-3-lg.webp 1024w, /images/chickens/uv/uv-3-xl.webp 1920w, /images/chickens/uv/uv-3.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/uv/uv-3-sm.jpg 320w, /images/chickens/uv/uv-3-md.jpg 640w, /images/chickens/uv/uv-3-lg.jpg 1024w, /images/chickens/uv/uv-3-xl.jpg 1920w, /images/chickens/uv/uv-3.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/uv/uv-3.jpg" alt="UV the chicken - photo 3" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                           </div>
                         </div>
@@ -546,7 +727,7 @@
                       </div>
                     </div>
                     <p class="text-base mt-4">
-                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
+                      UV is a hen named after ultraviolet light, as her feathers have a strangle shimmery black quality. She is pretty unique in that she has feathers on her feet, which is a trait that I've heared is from the Brahma species, but I'm not entirely sure what exact species she is. If you can tell, let me know!
                     </p>
                   </article>
                   
@@ -555,25 +736,45 @@
                   <!-- Toasty -->
                   <article id="toasty" class="chicken-profile">
                     <h3 class="text-2xl font-bold">Toasty</h3>
-                    <p class="text-sm italic text-gray-600 mb-3">Chicken</p>
+                    <p class="text-sm italic text-gray-600 mb-3">Hen</p>
                     <div class="carousel-wrapper">
                       <div class="carousel-container" data-carousel="toasty">
                         <div class="carousel-inner">
                           <div class="carousel-track">
                             <div class="carousel-item active">
-                              <img src="/images/chickens/toasty/toasty-1.jpg" alt="Toasty the chicken - photo 1" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/toasty/toasty-1-sm.webp 320w, /images/chickens/toasty/toasty-1-md.webp 640w, /images/chickens/toasty/toasty-1-lg.webp 1024w, /images/chickens/toasty/toasty-1-xl.webp 1920w, /images/chickens/toasty/toasty-1.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/toasty/toasty-1-sm.jpg 320w, /images/chickens/toasty/toasty-1-md.jpg 640w, /images/chickens/toasty/toasty-1-lg.jpg 1024w, /images/chickens/toasty/toasty-1-xl.jpg 1920w, /images/chickens/toasty/toasty-1.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/toasty/toasty-1.jpg" alt="Toasty the chicken - photo 1" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/toasty/toasty-2.jpg" alt="Toasty the chicken - photo 2" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/toasty/toasty-2-sm.webp 320w, /images/chickens/toasty/toasty-2-md.webp 640w, /images/chickens/toasty/toasty-2-lg.webp 1024w, /images/chickens/toasty/toasty-2-xl.webp 1920w, /images/chickens/toasty/toasty-2.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/toasty/toasty-2-sm.jpg 320w, /images/chickens/toasty/toasty-2-md.jpg 640w, /images/chickens/toasty/toasty-2-lg.jpg 1024w, /images/chickens/toasty/toasty-2-xl.jpg 1920w, /images/chickens/toasty/toasty-2.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/toasty/toasty-2.jpg" alt="Toasty the chicken - photo 2" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/toasty/toasty-3.jpg" alt="Toasty the chicken - photo 3" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/toasty/toasty-3-sm.webp 320w, /images/chickens/toasty/toasty-3-md.webp 640w, /images/chickens/toasty/toasty-3-lg.webp 1024w, /images/chickens/toasty/toasty-3-xl.webp 1920w, /images/chickens/toasty/toasty-3.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/toasty/toasty-3-sm.jpg 320w, /images/chickens/toasty/toasty-3-md.jpg 640w, /images/chickens/toasty/toasty-3-lg.jpg 1024w, /images/chickens/toasty/toasty-3-xl.jpg 1920w, /images/chickens/toasty/toasty-3.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/toasty/toasty-3.jpg" alt="Toasty the chicken - photo 3" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/toasty/IMG_0794.jpg" alt="Toasty the chicken - photo 4" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/toasty/IMG_0794-sm.webp 320w, /images/chickens/toasty/IMG_0794-md.webp 640w, /images/chickens/toasty/IMG_0794-lg.webp 1024w, /images/chickens/toasty/IMG_0794-xl.webp 1920w, /images/chickens/toasty/IMG_0794.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/toasty/IMG_0794-sm.jpg 320w, /images/chickens/toasty/IMG_0794-md.jpg 640w, /images/chickens/toasty/IMG_0794-lg.jpg 1024w, /images/chickens/toasty/IMG_0794-xl.jpg 1920w, /images/chickens/toasty/IMG_0794.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/toasty/IMG_0794.jpg" alt="Toasty the chicken - photo 4" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/toasty/IMG_0795.jpg" alt="Toasty the chicken - photo 5" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/toasty/IMG_0795-sm.webp 320w, /images/chickens/toasty/IMG_0795-md.webp 640w, /images/chickens/toasty/IMG_0795-lg.webp 1024w, /images/chickens/toasty/IMG_0795-xl.webp 1920w, /images/chickens/toasty/IMG_0795.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/toasty/IMG_0795-sm.jpg 320w, /images/chickens/toasty/IMG_0795-md.jpg 640w, /images/chickens/toasty/IMG_0795-lg.jpg 1024w, /images/chickens/toasty/IMG_0795-xl.jpg 1920w, /images/chickens/toasty/IMG_0795.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/toasty/IMG_0795.jpg" alt="Toasty the chicken - photo 5" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                           </div>
                         </div>
@@ -591,7 +792,7 @@
                       </div>
                     </div>
                     <p class="text-base mt-4">
-                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
+                      Toasty is one of two brown chickens, but is the only one that does not have a wattle (the fleshly red thing that hangs from a chickens beak). This is really the only difference between her and her sister, who is also a hen, and for a while I couldn't actually tell them apart.
                     </p>
                   </article>
                   
@@ -600,19 +801,31 @@
                   <!-- Rusty -->
                   <article id="rusty" class="chicken-profile">
                     <h3 class="text-2xl font-bold">Rusty</h3>
-                    <p class="text-sm italic text-gray-600 mb-3">Chicken</p>
+                    <p class="text-sm italic text-gray-600 mb-3">Hen</p>
                     <div class="carousel-wrapper">
                       <div class="carousel-container" data-carousel="rusty">
                         <div class="carousel-inner">
                           <div class="carousel-track">
                             <div class="carousel-item active">
-                              <img src="/images/chickens/rusty/rusty-1.jpg" alt="Rusty the chicken - photo 1" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/rusty/rusty-1-sm.webp 320w, /images/chickens/rusty/rusty-1-md.webp 640w, /images/chickens/rusty/rusty-1-lg.webp 1024w, /images/chickens/rusty/rusty-1-xl.webp 1920w, /images/chickens/rusty/rusty-1.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/rusty/rusty-1-sm.jpg 320w, /images/chickens/rusty/rusty-1-md.jpg 640w, /images/chickens/rusty/rusty-1-lg.jpg 1024w, /images/chickens/rusty/rusty-1-xl.jpg 1920w, /images/chickens/rusty/rusty-1.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/rusty/rusty-1.jpg" alt="Rusty the chicken - photo 1" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/rusty/rusty-2.jpg" alt="Rusty the chicken - photo 2" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/rusty/rusty-2-sm.webp 320w, /images/chickens/rusty/rusty-2-md.webp 640w, /images/chickens/rusty/rusty-2-lg.webp 1024w, /images/chickens/rusty/rusty-2-xl.webp 1920w, /images/chickens/rusty/rusty-2.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/rusty/rusty-2-sm.jpg 320w, /images/chickens/rusty/rusty-2-md.jpg 640w, /images/chickens/rusty/rusty-2-lg.jpg 1024w, /images/chickens/rusty/rusty-2-xl.jpg 1920w, /images/chickens/rusty/rusty-2.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/rusty/rusty-2.jpg" alt="Rusty the chicken - photo 2" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/rusty/rusty-3.jpg" alt="Rusty the chicken - photo 3" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/rusty/rusty-3-sm.webp 320w, /images/chickens/rusty/rusty-3-md.webp 640w, /images/chickens/rusty/rusty-3-lg.webp 1024w, /images/chickens/rusty/rusty-3-xl.webp 1920w, /images/chickens/rusty/rusty-3.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/rusty/rusty-3-sm.jpg 320w, /images/chickens/rusty/rusty-3-md.jpg 640w, /images/chickens/rusty/rusty-3-lg.jpg 1024w, /images/chickens/rusty/rusty-3-xl.jpg 1920w, /images/chickens/rusty/rusty-3.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/rusty/rusty-3.jpg" alt="Rusty the chicken - photo 3" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                           </div>
                         </div>
@@ -630,7 +843,7 @@
                       </div>
                     </div>
                     <p class="text-base mt-4">
-                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
+                      Rusty is the only brown hen that has a wattle, and is named partially after her color, but also after her personality, which I can only really describe as rusty. She is very curious, but also very quick to run away from you. If standing still, she will look up at you with a tilted head, which is pretty funny to see.
                     </p>
                   </article>
                   
@@ -639,34 +852,66 @@
                   <!-- Cheeto Puff -->
                   <article id="cheetopuff" class="chicken-profile">
                     <h3 class="text-2xl font-bold">Cheeto Puff</h3>
-                    <p class="text-sm italic text-gray-600 mb-3">Chicken</p>
+                    <p class="text-sm italic text-gray-600 mb-3">Hen</p>
                     <div class="carousel-wrapper">
                       <div class="carousel-container" data-carousel="cheetopuff">
                         <div class="carousel-inner">
                           <div class="carousel-track">
                             <div class="carousel-item active">
-                              <img src="/images/chickens/Cheeto-Puff/IMG_0798.jpg" alt="Cheeto Puff the chicken - photo 1" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/Cheeto-Puff/IMG_0798-sm.webp 320w, /images/chickens/Cheeto-Puff/IMG_0798-md.webp 640w, /images/chickens/Cheeto-Puff/IMG_0798-lg.webp 1024w, /images/chickens/Cheeto-Puff/IMG_0798-xl.webp 1920w, /images/chickens/Cheeto-Puff/IMG_0798.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/Cheeto-Puff/IMG_0798-sm.jpg 320w, /images/chickens/Cheeto-Puff/IMG_0798-md.jpg 640w, /images/chickens/Cheeto-Puff/IMG_0798-lg.jpg 1024w, /images/chickens/Cheeto-Puff/IMG_0798-xl.jpg 1920w, /images/chickens/Cheeto-Puff/IMG_0798.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/Cheeto-Puff/IMG_0798.jpg" alt="Cheeto Puff the chicken - photo 1" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/Cheeto-Puff/IMG_0799.jpg" alt="Cheeto Puff the chicken - photo 2" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/Cheeto-Puff/IMG_0799-sm.webp 320w, /images/chickens/Cheeto-Puff/IMG_0799-md.webp 640w, /images/chickens/Cheeto-Puff/IMG_0799-lg.webp 1024w, /images/chickens/Cheeto-Puff/IMG_0799-xl.webp 1920w, /images/chickens/Cheeto-Puff/IMG_0799.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/Cheeto-Puff/IMG_0799-sm.jpg 320w, /images/chickens/Cheeto-Puff/IMG_0799-md.jpg 640w, /images/chickens/Cheeto-Puff/IMG_0799-lg.jpg 1024w, /images/chickens/Cheeto-Puff/IMG_0799-xl.jpg 1920w, /images/chickens/Cheeto-Puff/IMG_0799.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/Cheeto-Puff/IMG_0799.jpg" alt="Cheeto Puff the chicken - photo 2" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/Cheeto-Puff/IMG_0800.jpg" alt="Cheeto Puff the chicken - photo 3" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/Cheeto-Puff/IMG_0800-sm.webp 320w, /images/chickens/Cheeto-Puff/IMG_0800-md.webp 640w, /images/chickens/Cheeto-Puff/IMG_0800-lg.webp 1024w, /images/chickens/Cheeto-Puff/IMG_0800-xl.webp 1920w, /images/chickens/Cheeto-Puff/IMG_0800.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/Cheeto-Puff/IMG_0800-sm.jpg 320w, /images/chickens/Cheeto-Puff/IMG_0800-md.jpg 640w, /images/chickens/Cheeto-Puff/IMG_0800-lg.jpg 1024w, /images/chickens/Cheeto-Puff/IMG_0800-xl.jpg 1920w, /images/chickens/Cheeto-Puff/IMG_0800.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/Cheeto-Puff/IMG_0800.jpg" alt="Cheeto Puff the chicken - photo 3" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/Cheeto-Puff/IMG_0801.jpg" alt="Cheeto Puff the chicken - photo 4" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/Cheeto-Puff/IMG_0801-sm.webp 320w, /images/chickens/Cheeto-Puff/IMG_0801-md.webp 640w, /images/chickens/Cheeto-Puff/IMG_0801-lg.webp 1024w, /images/chickens/Cheeto-Puff/IMG_0801-xl.webp 1920w, /images/chickens/Cheeto-Puff/IMG_0801.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/Cheeto-Puff/IMG_0801-sm.jpg 320w, /images/chickens/Cheeto-Puff/IMG_0801-md.jpg 640w, /images/chickens/Cheeto-Puff/IMG_0801-lg.jpg 1024w, /images/chickens/Cheeto-Puff/IMG_0801-xl.jpg 1920w, /images/chickens/Cheeto-Puff/IMG_0801.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/Cheeto-Puff/IMG_0801.jpg" alt="Cheeto Puff the chicken - photo 4" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/Cheeto-Puff/IMG_0802.jpg" alt="Cheeto Puff the chicken - photo 5" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/Cheeto-Puff/IMG_0802-sm.webp 320w, /images/chickens/Cheeto-Puff/IMG_0802-md.webp 640w, /images/chickens/Cheeto-Puff/IMG_0802-lg.webp 1024w, /images/chickens/Cheeto-Puff/IMG_0802-xl.webp 1920w, /images/chickens/Cheeto-Puff/IMG_0802.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/Cheeto-Puff/IMG_0802-sm.jpg 320w, /images/chickens/Cheeto-Puff/IMG_0802-md.jpg 640w, /images/chickens/Cheeto-Puff/IMG_0802-lg.jpg 1024w, /images/chickens/Cheeto-Puff/IMG_0802-xl.jpg 1920w, /images/chickens/Cheeto-Puff/IMG_0802.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/Cheeto-Puff/IMG_0802.jpg" alt="Cheeto Puff the chicken - photo 5" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/Cheeto-Puff/IMG_0813.jpg" alt="Cheeto Puff the chicken - photo 6" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/Cheeto-Puff/IMG_0813-sm.webp 320w, /images/chickens/Cheeto-Puff/IMG_0813-md.webp 640w, /images/chickens/Cheeto-Puff/IMG_0813-lg.webp 1024w, /images/chickens/Cheeto-Puff/IMG_0813-xl.webp 1920w, /images/chickens/Cheeto-Puff/IMG_0813.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/Cheeto-Puff/IMG_0813-sm.jpg 320w, /images/chickens/Cheeto-Puff/IMG_0813-md.jpg 640w, /images/chickens/Cheeto-Puff/IMG_0813-lg.jpg 1024w, /images/chickens/Cheeto-Puff/IMG_0813-xl.jpg 1920w, /images/chickens/Cheeto-Puff/IMG_0813.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/Cheeto-Puff/IMG_0813.jpg" alt="Cheeto Puff the chicken - photo 6" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/Cheeto-Puff/IMG_0814.jpg" alt="Cheeto Puff the chicken - photo 7" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/Cheeto-Puff/IMG_0814-sm.webp 320w, /images/chickens/Cheeto-Puff/IMG_0814-md.webp 640w, /images/chickens/Cheeto-Puff/IMG_0814-lg.webp 1024w, /images/chickens/Cheeto-Puff/IMG_0814-xl.webp 1920w, /images/chickens/Cheeto-Puff/IMG_0814.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/Cheeto-Puff/IMG_0814-sm.jpg 320w, /images/chickens/Cheeto-Puff/IMG_0814-md.jpg 640w, /images/chickens/Cheeto-Puff/IMG_0814-lg.jpg 1024w, /images/chickens/Cheeto-Puff/IMG_0814-xl.jpg 1920w, /images/chickens/Cheeto-Puff/IMG_0814.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/Cheeto-Puff/IMG_0814.jpg" alt="Cheeto Puff the chicken - photo 7" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                             <div class="carousel-item">
-                              <img src="/images/chickens/Cheeto-Puff/IMG_0815.jpg" alt="Cheeto Puff the chicken - photo 8" loading="lazy">
+                              <picture>
+      <source type="image/webp" srcset="/images/chickens/Cheeto-Puff/IMG_0815-sm.webp 320w, /images/chickens/Cheeto-Puff/IMG_0815-md.webp 640w, /images/chickens/Cheeto-Puff/IMG_0815-lg.webp 1024w, /images/chickens/Cheeto-Puff/IMG_0815-xl.webp 1920w, /images/chickens/Cheeto-Puff/IMG_0815.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/chickens/Cheeto-Puff/IMG_0815-sm.jpg 320w, /images/chickens/Cheeto-Puff/IMG_0815-md.jpg 640w, /images/chickens/Cheeto-Puff/IMG_0815-lg.jpg 1024w, /images/chickens/Cheeto-Puff/IMG_0815-xl.jpg 1920w, /images/chickens/Cheeto-Puff/IMG_0815.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/chickens/Cheeto-Puff/IMG_0815.jpg" alt="Cheeto Puff the chicken - photo 8" loading="lazy" decoding="async" >
+      </picture>
                             </div>
                           </div>
                         </div>
@@ -684,7 +929,7 @@
                       </div>
                     </div>
                     <p class="text-base mt-4">
-                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
+                      Cheeto Puff is a hen named after her orange color, which is a bit more vibrant than the other brown hens. She is also named after the way she relaxes, which is curling up into a puff of featers, with only the very top of her head visible.
                     </p>
                   </article>
                 </div>
@@ -694,16 +939,20 @@
               <section id="setup" class="pt-12">
                 <h2 class="text-3xl font-bold mb-6">Setup</h2>
                 <p class="text-lg mb-8">
-                  Our coop is built in the backyard, featuring an outer enclosed area where the chickens can roam freely during the day, and an inner henhouse where they sleep safely at night.
+                  Our coop is built in our backyard, featuring an outer enclosed area where the chickens can roam freely during the day, and an inner henhouse where they sleep safely at night. We usually open up the enclosure during the day, so they can roam around the yard, and at night, they naturally walk back into the coop, which we lock to keep out predators.
                 </p>
                 
                 <div class="space-y-10">
                   <!-- Food -->
                   <article id="food">
-                    <img src="/images/setup/food.jpg" alt="Chicken food setup" class="w-full max-w-md rounded-lg mb-4" loading="lazy">
+                    <picture>
+      <source type="image/webp" srcset="/images/setup/food-sm.webp 320w, /images/setup/food-md.webp 640w, /images/setup/food-lg.webp 1024w, /images/setup/food-xl.webp 1920w, /images/setup/food.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/setup/food-sm.jpg 320w, /images/setup/food-md.jpg 640w, /images/setup/food-lg.jpg 1024w, /images/setup/food-xl.jpg 1920w, /images/setup/food.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/setup/food.jpg" alt="Chicken food setup" class="w-full max-w-md rounded-lg mb-4" loading="lazy" decoding="async" >
+      </picture>
                     <h3 class="text-xl font-semibold mb-2">Food</h3>
                     <p class="text-base">
-                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+                      Our feeder is a bucket that has a neat little attachment that keeps the food dry, and helps keep the chickens from making a mess. We fill it with high quality chicken feed, and it lasts for about 2 weeks per fill. One reason you may see the chickens eating leaves or searching for bugs is because while the feed is great for keeping them fit and healthy, I personally don't think they like it too much, just like how we humans need all our nutrients, but don't want to eat only health food. We also will sometimes give the hens a bit of out leftovers, things like rice or bread, which they love. You just have to be careful giving chickens scraps, because too much can make them sick. There has to be the health food of the chicken feed alongside the junk food of our scraps.
                     </p>
                   </article>
                   
@@ -711,10 +960,14 @@
                   
                   <!-- Water -->
                   <article id="water">
-                    <img src="/images/setup/water.jpg" alt="Chicken water setup" class="w-full max-w-md rounded-lg mb-4" loading="lazy">
+                    <picture>
+      <source type="image/webp" srcset="/images/setup/water-sm.webp 320w, /images/setup/water-md.webp 640w, /images/setup/water-lg.webp 1024w, /images/setup/water-xl.webp 1920w, /images/setup/water.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/setup/water-sm.jpg 320w, /images/setup/water-md.jpg 640w, /images/setup/water-lg.jpg 1024w, /images/setup/water-xl.jpg 1920w, /images/setup/water.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/setup/water.jpg" alt="Chicken water setup" class="w-full max-w-md rounded-lg mb-4" loading="lazy" decoding="async" >
+      </picture>
                     <h3 class="text-xl font-semibold mb-2">Water</h3>
                     <p class="text-base">
-                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+                      Our water is also a bucket with these really clever attachments drilled in. What these do is add a couple tiny beak-sized areas that fill with just enough water, which keeps the chickens from wasting water, and still let them drink as much as they want. A really clever design, in my opinion.
                     </p>
                   </article>
                   
@@ -722,10 +975,14 @@
                   
                   <!-- Henhouse -->
                   <article id="henhouse">
-                    <img src="/images/setup/henhouse.jpg" alt="Chicken henhouse" class="w-full max-w-md rounded-lg mb-4" loading="lazy">
+                    <picture>
+      <source type="image/webp" srcset="/images/setup/henhouse-sm.webp 320w, /images/setup/henhouse-md.webp 640w, /images/setup/henhouse-lg.webp 1024w, /images/setup/henhouse-xl.webp 1920w, /images/setup/henhouse.webp 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <source type="image/jpeg" srcset="/images/setup/henhouse-sm.jpg 320w, /images/setup/henhouse-md.jpg 640w, /images/setup/henhouse-lg.jpg 1024w, /images/setup/henhouse-xl.jpg 1920w, /images/setup/henhouse.jpg 2400w" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" >
+      <img src="/images/setup/henhouse.jpg" alt="Chicken henhouse" class="w-full max-w-md rounded-lg mb-4" loading="lazy" decoding="async" >
+      </picture>
                     <h3 class="text-xl font-semibold mb-2">Henhouse</h3>
                     <p class="text-base">
-                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+                      The henhouse is a wooden box that we painted red and white (classic henhouse colors). It has a little door that we can open and close, although we always leave it open because the main door of the coop is the only one that really needs to be locked to keep out predators. We have a roosting bar where all the chickens can sit at night, and in the future, we are going to add specific areas where chickens can securely lay eggs.
                     </p>
                   </article>
                 </div>
@@ -745,253 +1002,36 @@
     </svg>
   </button>
 
+
+  <!-- Load modular JavaScript -->
+  <script type="module" src="/js/about.js"></script>
+
+  <!-- Async load non-critical scripts -->
   <script>
-    //carousel functionality
-    class Carousel {
-      constructor(container) {
-        this.container = container;
-        this.inner = container.querySelector('.carousel-inner');
-        this.track = container.querySelector('.carousel-track');
-        this.items = container.querySelectorAll('.carousel-item');
-        this.prevBtn = container.querySelector('.prev');
-        this.nextBtn = container.querySelector('.next');
-        this.indicatorsContainer = container.querySelector('.carousel-indicators');
-        this.currentIndex = 0;
-        this.touchStartX = 0;
-        this.touchEndX = 0;
-        this.autoScrollInterval = null;
-        this.autoScrollDelay = 5000; // 5 seconds default
-        this.manualInteractionDelay = 30000; // 30 seconds after manual interaction
-        this.currentDelay = this.autoScrollDelay; // Track current delay
-        
-        this.init();
-      }
-      
-      init() {
-        //create indicators
-        this.items.forEach((_, index) => {
-          const dot = document.createElement('div');
-          dot.classList.add('carousel-dot');
-          if (index === 0) dot.classList.add('active');
-          dot.addEventListener('click', () => this.goToSlide(index));
-          this.indicatorsContainer.appendChild(dot);
-        });
-        
-        this.indicators = this.indicatorsContainer.querySelectorAll('.carousel-dot');
-        
-        //add event listeners
-        this.prevBtn.addEventListener('click', () => this.prev());
-        this.nextBtn.addEventListener('click', () => this.next());
-        
-        //touch support
-        this.track.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: true });
-        this.track.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: true });
-        
-        //keyboard support
-        this.container.addEventListener('keydown', (e) => this.handleKeydown(e));
-        
-        //hover events for auto-scroll
-        this.container.addEventListener('mouseenter', () => this.stopAutoScroll());
-        this.container.addEventListener('mouseleave', () => this.startAutoScroll());
-        
-        //set initial active state
-        this.updateActiveStates();
-        this.updateButtons();
-        this.startAutoScroll();
-      }
-      
-      updateSlidePosition() {
-        const isMobile = window.innerWidth < 768;
-        
-        if (isMobile) {
-          //mobile: single item view
-          const offset = -this.currentIndex * 100;
-          this.track.style.transform = `translateX(${offset}%)`;
-        } else {
-          //desktop: multi-item view with center focus
-          const itemWidth = 330; // 300px width + 30px margins
-          const containerWidth = this.inner.offsetWidth;
-          const centerOffset = (containerWidth / 2) - (itemWidth / 2);
-          const offset = centerOffset - (this.currentIndex * itemWidth);
-          this.track.style.transform = `translateX(${offset}px)`;
-        }
-        
-        //update indicators
-        this.indicators.forEach((dot, index) => {
-          dot.classList.toggle('active', index === this.currentIndex);
-        });
-        
-        this.updateActiveStates();
-        this.updateButtons();
-      }
-      
-      updateActiveStates() {
-        //remove active class from all items
-        this.items.forEach((item, index) => {
-          item.classList.remove('active');
-          
-          //add active class to current item
-          if (index === this.currentIndex) {
-            item.classList.add('active');
-          }
-        });
-      }
-      
-      updateButtons() {
-        const isMobile = window.innerWidth < 768;
-        
-        if (isMobile) {
-          //on mobile, disable at edges
-          this.prevBtn.disabled = this.currentIndex === 0;
-          this.nextBtn.disabled = this.currentIndex === this.items.length - 1;
-        } else {
-          //on desktop, disable at edges (not looping)
-          this.prevBtn.disabled = this.currentIndex === 0;
-          this.nextBtn.disabled = this.currentIndex === this.items.length - 1;
-        }
-      }
-      
-      goToSlide(index) {
-        this.currentIndex = Math.max(0, Math.min(index, this.items.length - 1));
-        this.updateSlidePosition();
-        this.handleManualInteraction();
-      }
-      
-      prev() {
-        const isMobile = window.innerWidth < 768;
-        
-        if (isMobile) {
-          //mobile behavior: stop at first
-          if (this.currentIndex > 0) {
-            this.currentIndex--;
-          }
-        } else {
-          //desktop behavior: loop to last
-          this.currentIndex = this.currentIndex === 0 ? this.items.length - 1 : this.currentIndex - 1;
-        }
-        
-        this.updateSlidePosition();
-        this.handleManualInteraction();
-      }
-      
-      next(isAutoScroll = false) {
-        const isMobile = window.innerWidth < 768;
-        
-        if (isMobile) {
-          //mobile behavior: stop at last or loop
-          if (this.currentIndex < this.items.length - 1) {
-            this.currentIndex++;
-          } else {
-            this.currentIndex = 0; // Loop back to first
-          }
-        } else {
-          //desktop behavior: always loop
-          this.currentIndex = (this.currentIndex + 1) % this.items.length;
-        }
-        
-        this.updateSlidePosition();
-        
-        if (!isAutoScroll) {
-          this.handleManualInteraction();
-        } else {
-          //reset to default delay after auto-scroll
-          this.currentDelay = this.autoScrollDelay;
-        }
-      }
-      
-      startAutoScroll() {
-        this.stopAutoScroll(); // Clear any existing interval
-        this.autoScrollInterval = setInterval(() => {
-          this.next(true); // Pass true to indicate auto-scroll
-        }, this.currentDelay);
-      }
-      
-      stopAutoScroll() {
-        if (this.autoScrollInterval) {
-          clearInterval(this.autoScrollInterval);
-          this.autoScrollInterval = null;
-        }
-      }
-      
-      handleTouchStart(e) {
-        this.touchStartX = e.changedTouches[0].clientX;
-      }
-      
-      handleTouchEnd(e) {
-        this.touchEndX = e.changedTouches[0].clientX;
-        this.handleSwipe();
-      }
-      
-      handleManualInteraction() {
-        //stop current auto-scroll and set delay to 30 seconds
-        this.stopAutoScroll();
-        this.currentDelay = this.manualInteractionDelay;
-        this.startAutoScroll();
-      }
-      
-      handleSwipe() {
-        const swipeThreshold = 50;
-        const diff = this.touchStartX - this.touchEndX;
-        
-        if (Math.abs(diff) > swipeThreshold) {
-          if (diff > 0) {
-            this.next();
-          } else {
-            this.prev();
-          }
-        }
-      }
-      
-      handleKeydown(e) {
-        if (e.key === 'ArrowLeft') {
-          this.prev();
-        } else if (e.key === 'ArrowRight') {
-          this.next();
-        }
-      }
-    }
-    
-    //initialize all carousels
-    document.querySelectorAll('.carousel-container').forEach(container => {
-      new Carousel(container);
-    });
-    
-    //handle back to top button visibility
-    const backToTopBtn = document.querySelector('.back-to-top');
-    
-    window.addEventListener('scroll', () => {
-      if (window.scrollY > 300) {
-        backToTopBtn.classList.add('show');
-      } else {
-        backToTopBtn.classList.remove('show');
-      }
-    });
-    
-    //handle TOC active states
-    const sections = document.querySelectorAll('section[id], article[id]');
-    const tocLinks = document.querySelectorAll('.toc-link');
-    
-    function updateActiveSection() {
-      const scrollPosition = window.scrollY + 100;
-      
-      sections.forEach(section => {
-        const sectionTop = section.offsetTop;
-        const sectionHeight = section.offsetHeight;
-        const sectionId = section.getAttribute('id');
-        
-        if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
-          tocLinks.forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('href') === `#${sectionId}`) {
-              link.classList.add('active');
+    // Load non-critical resources after page load
+    window.addEventListener('load', function() {
+      // Prefetch next page resources
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => {
+          // Prefetch likely next navigation targets
+          const links = document.querySelectorAll('a[href^="/"]');
+          links.forEach(link => {
+            const url = link.getAttribute('href');
+            if (url && !url.includes('#')) {
+              const prefetchLink = document.createElement('link');
+              prefetchLink.rel = 'prefetch';
+              prefetchLink.href = url;
+              document.head.appendChild(prefetchLink);
             }
           });
-        }
-      });
-    }
-    
-    window.addEventListener('scroll', updateActiveSection);
-    updateActiveSection();
+        });
+      }
+      
+      // Enable service worker when ready (Phase 4)
+      if ('serviceWorker' in navigator) {
+        // Placeholder for future service worker registration
+      }
+    });
   </script>
 </body>
 </html>

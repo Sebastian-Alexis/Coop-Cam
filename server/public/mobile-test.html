@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="caramellatte">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Mobile Test - Coop Cam</title>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="/css/mobile-fixes.css" rel="stylesheet" type="text/css" />
+  <style>
+    /* Visual indicators for testing */
+    .test-section {
+      margin: 2rem 0;
+      padding: 1rem;
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+    }
+    
+    .touch-target {
+      position: relative;
+      background: rgba(0, 255, 0, 0.1);
+      border: 1px solid rgba(0, 255, 0, 0.5);
+    }
+    
+    .touch-target::after {
+      content: attr(data-size);
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 10px;
+      color: #666;
+      pointer-events: none;
+    }
+    
+    /* Show actual touch area */
+    .show-touch-area * {
+      outline: 1px dashed red;
+    }
+  </style>
+</head>
+<body class="p-4">
+  <div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold mb-6">Mobile Optimization Test Page</h1>
+    <p class="mb-4">This page tests all Phase 1 mobile fixes. Each element should have a minimum 44x44px touch target.</p>
+    
+    <!-- Test Navigation Buttons -->
+    <div class="test-section">
+      <h2 class="text-xl font-semibold mb-4">1. Navigation Buttons (btn-sm fix)</h2>
+      <div class="flex gap-4">
+        <button class="btn btn-sm touch-target" data-size="">Small Button</button>
+        <button class="btn btn-ghost btn-sm touch-target" data-size="">Ghost Small</button>
+        <a href="#" class="btn btn-sm touch-target" data-size="">Link Button</a>
+      </div>
+    </div>
+    
+    <!-- Test Reaction System -->
+    <div class="test-section">
+      <h2 class="text-xl font-semibold mb-4">2. Reaction System</h2>
+      <div class="flex gap-4 items-center">
+        <div class="reaction-trigger touch-target" data-size="">
+          <img src="/art/reactions/add_reaction.gif" alt="Add reaction" class="reaction-trigger-img" />
+        </div>
+        <div class="reaction-item touch-target" data-size="">
+          <img src="/art/reactions/ChickenLove.gif" alt="Love" style="width: 32px; height: 32px;" />
+        </div>
+      </div>
+    </div>
+    
+    <!-- Test Carousel Dots -->
+    <div class="test-section">
+      <h2 class="text-xl font-semibold mb-4">3. Carousel Indicators</h2>
+      <div class="flex gap-4 justify-center">
+        <div class="carousel-dot touch-target" data-size=""></div>
+        <div class="carousel-dot active touch-target" data-size=""></div>
+        <div class="carousel-dot touch-target" data-size=""></div>
+      </div>
+    </div>
+    
+    <!-- Test Links -->
+    <div class="test-section">
+      <h2 class="text-xl font-semibold mb-4">4. Text Links</h2>
+      <div class="flex gap-8">
+        <a href="#" class="link link-hover touch-target" data-size="">Github</a>
+        <a href="#" class="link link-hover touch-target" data-size="">Devlogs</a>
+      </div>
+    </div>
+    
+    <!-- Test Form Inputs -->
+    <div class="test-section">
+      <h2 class="text-xl font-semibold mb-4">5. Form Inputs (no zoom test)</h2>
+      <div class="space-y-4">
+        <input type="text" placeholder="Text input" class="input input-bordered w-full touch-target" data-size="" />
+        <input type="password" placeholder="Password" class="input input-bordered w-full touch-target" data-size="" />
+        <div class="flex gap-4">
+          <label class="flex items-center gap-2">
+            <input type="checkbox" class="checkbox touch-target" data-size="" />
+            <span>Checkbox</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="radio" name="test" class="radio touch-target" data-size="" />
+            <span>Radio</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Test Mobile Visibility -->
+    <div class="test-section">
+      <h2 class="text-xl font-semibold mb-4">6. Mobile Visibility (hover elements)</h2>
+      <p class="mb-2">These should be visible on mobile without hovering:</p>
+      <div style="position: relative; width: 200px; height: 100px; background: #eee;">
+        <button class="fullscreen-btn">Fullscreen</button>
+      </div>
+    </div>
+    
+    <!-- Touch Area Visualizer -->
+    <div class="test-section">
+      <h2 class="text-xl font-semibold mb-4">7. Touch Area Visualizer</h2>
+      <button id="toggleTouchAreas" class="btn btn-primary">Toggle Touch Area Outlines</button>
+    </div>
+    
+    <!-- Size Measurement Tool -->
+    <div class="test-section">
+      <h2 class="text-xl font-semibold mb-4">8. Size Measurements</h2>
+      <div id="measurements" class="space-y-2 text-sm">
+        <p>Click any element to measure its size...</p>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Measure and display element sizes
+    function measureElement(element) {
+      const rect = element.getBoundingClientRect();
+      const computed = window.getComputedStyle(element);
+      const clickableWidth = rect.width + 
+        parseFloat(computed.marginLeft) + 
+        parseFloat(computed.marginRight);
+      const clickableHeight = rect.height + 
+        parseFloat(computed.marginTop) + 
+        parseFloat(computed.marginBottom);
+      
+      element.setAttribute('data-size', `${Math.round(rect.width)}x${Math.round(rect.height)}`);
+      
+      return {
+        visual: `${Math.round(rect.width)}x${Math.round(rect.height)}`,
+        clickable: `${Math.round(clickableWidth)}x${Math.round(clickableHeight)}`,
+        passes: clickableWidth >= 44 && clickableHeight >= 44
+      };
+    }
+    
+    // Measure all touch targets on load
+    document.addEventListener('DOMContentLoaded', () => {
+      const touchTargets = document.querySelectorAll('.touch-target');
+      touchTargets.forEach(target => {
+        measureElement(target);
+      });
+      
+      // Click handler for measurements
+      document.addEventListener('click', (e) => {
+        if (e.target.id === 'toggleTouchAreas') return;
+        
+        const measurement = measureElement(e.target);
+        const measureDiv = document.getElementById('measurements');
+        measureDiv.innerHTML = `
+          <p><strong>${e.target.textContent || e.target.className}</strong></p>
+          <p>Visual size: ${measurement.visual}</p>
+          <p>Clickable area: ${measurement.clickable}</p>
+          <p>Status: ${measurement.passes ? '✅ PASS' : '❌ FAIL'} (min 44x44)</p>
+        `;
+      });
+      
+      // Toggle touch area outlines
+      document.getElementById('toggleTouchAreas').addEventListener('click', () => {
+        document.body.classList.toggle('show-touch-area');
+      });
+    });
+    
+    // Device info
+    const isMobile = window.matchMedia('(hover: none)').matches;
+    const hasTouch = 'ontouchstart' in window;
+    console.log('Mobile device:', isMobile);
+    console.log('Touch support:', hasTouch);
+    console.log('Screen width:', window.innerWidth);
+    console.log('Device pixel ratio:', window.devicePixelRatio);
+  </script>
+</body>
+</html>

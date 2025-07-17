@@ -2,10 +2,34 @@
 <html lang="en" data-theme="caramellatte">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Coop Cam</title>
+
+    <!-- Resource Hints for Performance -->
+    <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+    
+    <!-- Prefetch JavaScript modules that will be needed -->
+    <link rel="prefetch" href="/js/modules/stream-manager.js" as="script">
+    <link rel="prefetch" href="/js/modules/flashlight-control.js" as="script">
+    <link rel="prefetch" href="/js/modules/weather-widget.js" as="script">
+    <link rel="prefetch" href="/js/modules/carousel.js" as="script">
+    
+    <!-- Prefetch commonly viewed images -->
+    <link rel="prefetch" href="/images/chickens/marshmallow/marshmallow-1-md.webp" as="image">
+    <link rel="prefetch" href="/images/chickens/charcoal/charcoal-1-md.webp" as="image">
+    
+    <!-- Additional performance optimizations -->
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    
+    <!-- Preload mobile CSS fixes -->
+    <link rel="preload" href="/css/mobile-fixes.css" as="style">
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com" defer></script>
+  <link href="/css/mobile-fixes.css" rel="stylesheet" type="text/css" />
   <style>
     /* Custom caramellatte theme */
     [data-theme="caramellatte"] {
@@ -47,6 +71,103 @@
       transform: rotate(-2deg);
     }
   </style>
+    <style id="critical-css">
+/* Critical CSS - Inline for fast initial render */
+
+/* Base reset and system fonts */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Prevent layout shift */
+img, video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Critical utility classes from Tailwind that are used above-the-fold */
+.min-h-screen { min-height: 100vh; }
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.relative { position: relative; }
+.fixed { position: fixed; }
+.absolute { position: absolute; }
+.top-0 { top: 0; }
+.left-0 { left: 0; }
+.right-0 { right: 0; }
+.w-full { width: 100%; }
+.max-w-7xl { max-width: 80rem; }
+.mx-auto { margin-left: auto; margin-right: auto; }
+.p-4 { padding: 1rem; }
+.px-4 { padding-left: 1rem; padding-right: 1rem; }
+.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.mb-4 { margin-bottom: 1rem; }
+.text-center { text-align: center; }
+.rounded-lg { border-radius: 0.5rem; }
+.shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+
+/* Critical button styles - structure only, no colors */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  cursor: pointer;
+  min-height: 3rem;
+  min-width: 3rem;
+  text-decoration: none;
+}
+
+/* Hide elements until JS loads */
+.js-only {
+  display: none;
+}
+
+/* Stream container critical styles */
+.video-container {
+  aspect-ratio: 16/9;
+  background-color: #000;
+  position: relative;
+  overflow: hidden;
+}
+
+#stream {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Loading state */
+.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Mobile-specific critical styles */
+@media (max-width: 768px) {
+  .p-4 { padding: 0.75rem; }
+  .text-4xl { font-size: 2rem; }
+  .gap-4 { gap: 0.75rem; }
+}
+    </style>
+
+    <!-- Preload critical resources -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/daisyui@4.12.22/dist/full.min.css" as="style">
+    <link rel="preload" href="/js/app.js" as="script" crossorigin>
 </head>
 <body>
   <div class="min-h-screen bg-base-100 flex flex-col items-center justify-center p-8">
@@ -78,5 +199,33 @@
       </div>
     </div>
   </div>
+
+  <!-- Async load non-critical scripts -->
+  <script>
+    // Load non-critical resources after page load
+    window.addEventListener('load', function() {
+      // Prefetch next page resources
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => {
+          // Prefetch likely next navigation targets
+          const links = document.querySelectorAll('a[href^="/"]');
+          links.forEach(link => {
+            const url = link.getAttribute('href');
+            if (url && !url.includes('#')) {
+              const prefetchLink = document.createElement('link');
+              prefetchLink.rel = 'prefetch';
+              prefetchLink.href = url;
+              document.head.appendChild(prefetchLink);
+            }
+          });
+        });
+      }
+      
+      // Enable service worker when ready (Phase 4)
+      if ('serviceWorker' in navigator) {
+        // Placeholder for future service worker registration
+      }
+    });
+  </script>
 </body>
 </html>
