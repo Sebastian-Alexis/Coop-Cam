@@ -926,6 +926,21 @@ app.get('/', serveStaticHTML('index.html'));
 app.get('/coop', serveStaticHTML('coop.html'));
 app.get('/about', serveStaticHTML('about.html'));
 
+// Serve mobile CSS
+app.get('/mobile.css', (req, res) => {
+  const filePath = path.join(__dirname, 'views', 'mobile.css');
+  res.set({
+    'Content-Type': 'text/css',
+    'Cache-Control': 'public, max-age=3600'
+  });
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      console.error('Error serving mobile.css:', err);
+      res.status(404).send('File not found');
+    }
+  });
+});
+
 // Catch-all route for undefined paths
 app.get('*', (req, res, next) => {
   // Skip if it's an API route or a static file
