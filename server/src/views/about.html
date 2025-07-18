@@ -348,25 +348,43 @@
 </head>
 <body>
   <div class="min-h-screen bg-base-100 flex flex-col">
+    <!-- Mobile Navigation Drawer -->
+    <div id="mobileNavDrawer" class="mobile-nav-drawer">
+      <div class="p-4 border-b border-base-300">
+        <h2 class="text-xl font-bold">Menu</h2>
+      </div>
+      <nav class="p-4">
+        <ul class="menu">
+          <li><a href="/" class="text-lg">Home</a></li>
+          <li><a href="/coop" class="text-lg">Live Stream</a></li>
+          <li><a href="/about" class="text-lg">About Our Chickens</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div id="mobileNavBackdrop" class="mobile-nav-backdrop" onclick="toggleMobileNav()"></div>
     <!-- Header -->
     <header class="bg-base-200 border-b border-base-300 sticky top-0 z-50">
       <div class="navbar container-padding max-w-7xl mx-auto">
         <div class="navbar-start">
-          <a href="/" class="btn btn-ghost btn-sm gap-1 touch-target">
+          <!-- Hamburger Menu (Mobile) -->
+          <button onclick="toggleMobileNav()" class="btn btn-ghost btn-sm touch-target hamburger-menu">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+          </button>
+          <!-- Desktop Back Button -->
+          <a href="/" class="btn btn-ghost btn-sm gap-1 touch-target desktop-nav">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
-            <span class="mobile-hide">Home</span>
+            <span>Home</span>
           </a>
         </div>
         <div class="navbar-center">
           <h1 class="text-xl md:text-2xl font-bold">About Our Coop</h1>
         </div>
         <div class="navbar-end">
-          <a href="/coop" class="btn btn-ghost btn-sm touch-target">
-            <span class="mobile-hide">View Live Stream</span>
-            <span class="mobile-only">Live Stream</span>
-          </a>
+          <!-- Live Stream button removed on mobile, available in hamburger menu -->
         </div>
       </div>
     </header>
@@ -750,6 +768,20 @@
   </button>
 
   <script>
+    //mobile navigation toggle
+    function toggleMobileNav() {
+      const drawer = document.getElementById('mobileNavDrawer');
+      const backdrop = document.getElementById('mobileNavBackdrop');
+      
+      if (drawer.classList.contains('open')) {
+        drawer.classList.remove('open');
+        backdrop.classList.remove('show');
+      } else {
+        drawer.classList.add('open');
+        backdrop.classList.add('show');
+      }
+    }
+    
     //carousel functionality
     class Carousel {
       constructor(container) {

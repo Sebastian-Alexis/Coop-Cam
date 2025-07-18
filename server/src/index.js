@@ -673,7 +673,7 @@ app.get('/api/recordings/recent', async (req, res) => {
       // Include reaction data
       reactions: reactionsData[rec.filename] || {
         summary: Object.keys(REACTION_TYPES).reduce((acc, type) => {
-          acc[type] = 0;
+          acc[type] = {};
           return acc;
         }, {}),
         totalReactions: 0,

@@ -1514,46 +1514,44 @@
               <!-- Reaction badges positioned at bottom-right -->
               <div class="reaction-badges absolute -bottom-1 right-2 flex items-center gap-1">
                 ${(() => {
-                  const topReactions = Object.entries(recording.reactions?.summary || {})
-                    .filter(([_, count]) => count > 0)
-                    .sort((a, b) => b[1] - a[1]);
-                  
                   let badgesHTML = '';
+                  const processedCombos = new Set();
                   
-                  //first, show user's reactions with their specific tones
-                  const userReactionTypes = new Set();
+                  //first, collect all unique type+tone combinations from the summary
+                  const allReactionCombos = [];
+                  Object.entries(recording.reactions?.summary || {}).forEach(([type, toneData]) => {
+                    if (typeof toneData === 'object') {
+                      Object.entries(toneData).forEach(([tone, count]) => {
+                        if (count > 0) {
+                          allReactionCombos.push({ type, tone, count });
+                        }
+                      });
+                    }
+                  });
+                  
+                  //sort by count descending
+                  allReactionCombos.sort((a, b) => b.count - a.count);
+                  
+                  //check which ones are the user's reactions
+                  const userReactionMap = new Map();
                   if (recording.reactions?.userReactions && recording.reactions.userReactions.length > 0) {
                     recording.reactions.userReactions.forEach(reaction => {
                       const type = typeof reaction === 'string' ? reaction : reaction.type;
                       const tone = typeof reaction === 'object' ? reaction.tone : 'marshmallow';
-                      const imagePath = getReactionImagePath(type, tone);
-                      
-                      userReactionTypes.add(type);
-                      
-                      //get count for this type from summary
-                      const count = recording.reactions.summary[type] || 0;
-                      
-                      badgesHTML += `
-                        <div class="reaction-item user-reaction" 
-                             onclick="event.stopPropagation(); selectReaction('${recording.filename}', '${type}')"
-                             title="React with ${type} (${tone})">
-                          <img src="${imagePath}" alt="${type}" 
-                               onerror="handleReactionImageError(this, '${type}')" />
-                          <span class="reaction-count">${count > 99 ? '99+' : count}</span>
-                        </div>
-                      `;
+                      userReactionMap.set(`${type}-${tone}`, true);
                     });
                   }
                   
-                  //then show other top reactions that user doesn't have
-                  const otherTopReactions = topReactions.filter(([type, _]) => !userReactionTypes.has(type));
-                  otherTopReactions.forEach(([type, count]) => {
-                    const imagePath = getReactionImagePath(type, 'marshmallow');
+                  //render all reaction combos
+                  allReactionCombos.forEach(({ type, tone, count }) => {
+                    const comboKey = `${type}-${tone}`;
+                    const isUserReaction = userReactionMap.has(comboKey);
+                    const imagePath = getReactionImagePath(type, tone);
                     
                     badgesHTML += `
-                      <div class="reaction-item" 
+                      <div class="reaction-item ${isUserReaction ? 'user-reaction' : ''}" 
                            onclick="event.stopPropagation(); selectReaction('${recording.filename}', '${type}')"
-                           title="React with ${type}">
+                           title="React with ${type} (${tone})">
                         <img src="${imagePath}" alt="${type}" 
                              onerror="handleReactionImageError(this, '${type}')" />
                         <span class="reaction-count">${count > 99 ? '99+' : count}</span>
@@ -1851,58 +1849,49 @@
       //update reaction badges
       const badgesContainer = container.querySelector('.reaction-badges');
       if (badgesContainer) {
-        //get top reactions
-        const topReactions = Object.entries(summary)
-          .filter(([_, count]) => count > 0)
-          .sort((a, b) => b[1] - a[1]);
-        
-        //calculate total
-        const totalReactions = Object.values(summary).reduce((sum, count) => sum + count, 0);
-        
-        //rebuild badges HTML - show each user reaction with its specific tone
         let badgesHTML = '';
         
-        //first, show user's reactions with their specific tones
-        const userReactionTypes = new Set();
+        //collect all unique type+tone combinations from the summary
+        const allReactionCombos = [];
+        Object.entries(summary || {}).forEach(([type, toneData]) => {
+          if (typeof toneData === 'object') {
+            Object.entries(toneData).forEach(([tone, count]) => {
+              if (count > 0) {
+                allReactionCombos.push({ type, tone, count });
+              }
+            });
+          }
+        });
+        
+        //sort by count descending
+        allReactionCombos.sort((a, b) => b.count - a.count);
+        
+        //check which ones are the user's reactions
+        const userReactionMap = new Map();
         if (userReactions && userReactions.length > 0) {
           userReactions.forEach(reaction => {
             const type = typeof reaction === 'string' ? reaction : reaction.type;
             const tone = typeof reaction === 'object' ? reaction.tone : 'marshmallow';
-            const imagePath = getReactionImagePath(type, tone);
-            
-            userReactionTypes.add(type);
-            
-            //get count for this type from summary
-            const count = summary[type] || 0;
-            
-            badgesHTML += `
-              <div class="reaction-item user-reaction"
-                   onclick="event.stopPropagation(); selectReaction('${filename}', '${type}')"
-                   title="React with ${type} (${tone})">
-                <img src="${imagePath}" alt="${type}" 
-                     onerror="handleReactionImageError(this, '${type}')" />
-                <span class="reaction-count">${count > 99 ? '99+' : count}</span>
-              </div>
-            `;
+            userReactionMap.set(`${type}-${tone}`, true);
           });
         }
         
-        //then show other top reactions that user doesn't have
-        const otherTopReactions = topReactions.filter(([type, _]) => !userReactionTypes.has(type));
-        badgesHTML += otherTopReactions.map(([type, count]) => {
-          const imagePath = getReactionImagePath(type, 'marshmallow');
+        //render all reaction combos
+        allReactionCombos.forEach(({ type, tone, count }) => {
+          const comboKey = `${type}-${tone}`;
+          const isUserReaction = userReactionMap.has(comboKey);
+          const imagePath = getReactionImagePath(type, tone);
           
-          return `
-            <div class="reaction-item"
+          badgesHTML += `
+            <div class="reaction-item ${isUserReaction ? 'user-reaction' : ''}"
                  onclick="event.stopPropagation(); selectReaction('${filename}', '${type}')"
-                 title="React with ${type}">
+                 title="React with ${type} (${tone})">
               <img src="${imagePath}" alt="${type}" 
                    onerror="handleReactionImageError(this, '${type}')" />
               <span class="reaction-count">${count > 99 ? '99+' : count}</span>
             </div>
           `;
-        }).join('');
-        
+        });
         
         badgesContainer.innerHTML = badgesHTML;
       }

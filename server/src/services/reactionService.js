@@ -54,7 +54,7 @@ class ReactionService {
     return path.join(this.reactionsDir, dateFolder, reactionsFilename);
   }
 
-  //migrate old string reactions to new object format
+  //migrate old string reactions to new object format and update summary structure
   migrateReactions(reactionsData) {
     let needsMigration = false;
     
@@ -73,6 +73,41 @@ class ReactionService {
       }
     });
     
+    //check if summary needs migration (old format is flat object, new format is nested)
+    let summaryNeedsMigration = false;
+    if (reactionsData.summary) {
+      //check if it's the old flat format
+      const firstKey = Object.keys(reactionsData.summary)[0];
+      if (firstKey && typeof reactionsData.summary[firstKey] === 'number') {
+        summaryNeedsMigration = true;
+      }
+    }
+    
+    //rebuild summary from reactions array to ensure accuracy
+    if (summaryNeedsMigration || needsMigration) {
+      needsMigration = true;
+      const newSummary = {};
+      
+      //initialize all reaction types with empty tone objects
+      Object.keys(REACTION_TYPES).forEach(type => {
+        newSummary[type] = {};
+      });
+      
+      //count reactions by type and tone
+      reactionsData.reactions.forEach(reaction => {
+        const type = reaction.reaction.type;
+        const tone = reaction.reaction.tone || DEFAULT_TONE;
+        
+        if (!newSummary[type]) {
+          newSummary[type] = {};
+        }
+        
+        newSummary[type][tone] = (newSummary[type][tone] || 0) + 1;
+      });
+      
+      reactionsData.summary = newSummary;
+    }
+    
     return { data: reactionsData, migrated: needsMigration };
   }
 
@@ -82,11 +117,11 @@ class ReactionService {
       const filePath = this.getReactionsFilePath(recordingFilename);
       
       if (!existsSync(filePath)) {
-        //return empty reactions structure
+        //return empty reactions structure with new nested format
         return {
           reactions: [],
           summary: Object.keys(REACTION_TYPES).reduce((acc, type) => {
-            acc[type] = 0;
+            acc[type] = {};
             return acc;
           }, {})
         };
@@ -108,11 +143,11 @@ class ReactionService {
       return reactionsData;
     } catch (error) {
       console.error('[Reactions] Error loading reactions:', error);
-      //return empty reactions on error
+      //return empty reactions on error with new nested format
       return {
         reactions: [],
         summary: Object.keys(REACTION_TYPES).reduce((acc, type) => {
-          acc[type] = 0;
+          acc[type] = {};
           return acc;
         }, {})
       };
@@ -173,8 +208,11 @@ class ReactionService {
         timestamp: new Date().toISOString()
       });
       
-      //update summary (increment for any new reaction, even if same type with different tone)
-      reactionsData.summary[reactionType]++;
+      //update summary with new nested structure
+      if (!reactionsData.summary[reactionType]) {
+        reactionsData.summary[reactionType] = {};
+      }
+      reactionsData.summary[reactionType][tone] = (reactionsData.summary[reactionType][tone] || 0) + 1;
     }
     
     //save updated reactions
@@ -219,11 +257,20 @@ class ReactionService {
       toRemove.sort((a, b) => b - a);
       toRemove.forEach(index => {
         const removedReaction = reactionsData.reactions[index];
+        const removedType = removedReaction.reaction.type;
+        const removedTone = removedReaction.reaction.tone || DEFAULT_TONE;
+        
         reactionsData.reactions.splice(index, 1);
         
-        //update summary
-        if (reactionsData.summary[removedReaction.reaction.type] > 0) {
-          reactionsData.summary[removedReaction.reaction.type]--;
+        //update summary with nested structure
+        if (reactionsData.summary[removedType] && 
+            reactionsData.summary[removedType][removedTone] > 0) {
+          reactionsData.summary[removedType][removedTone]--;
+          
+          //clean up empty tone if count reaches 0
+          if (reactionsData.summary[removedType][removedTone] === 0) {
+            delete reactionsData.summary[removedType][removedTone];
+          }
         }
         removed = true;
       });
@@ -232,10 +279,19 @@ class ReactionService {
       const userReactions = reactionsData.reactions.filter(r => r.userId === userId);
       reactionsData.reactions = reactionsData.reactions.filter(r => r.userId !== userId);
       
-      //update summary for each removed reaction
+      //update summary for each removed reaction with nested structure
       userReactions.forEach(reaction => {
-        if (reactionsData.summary[reaction.reaction.type] > 0) {
-          reactionsData.summary[reaction.reaction.type]--;
+        const removedType = reaction.reaction.type;
+        const removedTone = reaction.reaction.tone || DEFAULT_TONE;
+        
+        if (reactionsData.summary[removedType] && 
+            reactionsData.summary[removedType][removedTone] > 0) {
+          reactionsData.summary[removedType][removedTone]--;
+          
+          //clean up empty tone if count reaches 0
+          if (reactionsData.summary[removedType][removedTone] === 0) {
+            delete reactionsData.summary[removedType][removedTone];
+          }
         }
       });
       
@@ -298,10 +354,10 @@ class ReactionService {
           results[filename] = await this.getReactions(filename, userId);
         } catch (error) {
           console.error(`[Reactions] Error getting reactions for ${filename}:`, error);
-          //return empty reactions on error
+          //return empty reactions on error with new nested format
           results[filename] = {
             summary: Object.keys(REACTION_TYPES).reduce((acc, type) => {
-              acc[type] = 0;
+              acc[type] = {};
               return acc;
             }, {}),
             totalReactions: 0,
