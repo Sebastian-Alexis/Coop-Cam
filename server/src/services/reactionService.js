@@ -17,6 +17,19 @@ export const REACTION_TYPES = {
   love: '/art/reactions/ChickenLove.gif'
 };
 
+//available chicken tones
+export const CHICKEN_TONES = [
+  'charcoal',
+  'cheetopuff',
+  'rusty',
+  'toasty',
+  'uv',
+  'marshmallow'
+];
+
+//default tone for backward compatibility
+export const DEFAULT_TONE = 'marshmallow';
+
 //reaction service for managing video reactions
 class ReactionService {
   constructor(config) {
@@ -41,6 +54,28 @@ class ReactionService {
     return path.join(this.reactionsDir, dateFolder, reactionsFilename);
   }
 
+  //migrate old string reactions to new object format
+  migrateReactions(reactionsData) {
+    let needsMigration = false;
+    
+    //check if any reactions are in old format (string)
+    reactionsData.reactions.forEach((reaction, index) => {
+      if (typeof reaction.reaction === 'string') {
+        needsMigration = true;
+        //convert to new format with default tone
+        reactionsData.reactions[index] = {
+          ...reaction,
+          reaction: {
+            type: reaction.reaction,
+            tone: DEFAULT_TONE
+          }
+        };
+      }
+    });
+    
+    return { data: reactionsData, migrated: needsMigration };
+  }
+
   //load reactions for a recording
   async loadReactions(recordingFilename) {
     try {
@@ -58,7 +93,19 @@ class ReactionService {
       }
       
       const content = await fs.readFile(filePath, 'utf8');
-      return JSON.parse(content);
+      let reactionsData = JSON.parse(content);
+      
+      //migrate old format if needed
+      const { data, migrated } = this.migrateReactions(reactionsData);
+      reactionsData = data;
+      
+      if (migrated) {
+        //save migrated data
+        await this.saveReactions(recordingFilename, reactionsData);
+        console.log(`[Reactions] Migrated reactions for ${recordingFilename} to new format`);
+      }
+      
+      return reactionsData;
     } catch (error) {
       console.error('[Reactions] Error loading reactions:', error);
       //return empty reactions on error
@@ -93,38 +140,43 @@ class ReactionService {
   }
 
   //add or update a user's reaction
-  async addReaction(recordingFilename, userId, reactionType) {
+  async addReaction(recordingFilename, userId, reactionType, tone = DEFAULT_TONE) {
     //validate reaction type
     if (!REACTION_TYPES[reactionType]) {
       throw new Error(`Invalid reaction type: ${reactionType}`);
     }
     
+    //validate tone
+    if (!CHICKEN_TONES.includes(tone)) {
+      throw new Error(`Invalid tone: ${tone}`);
+    }
+    
     //load current reactions
     const reactionsData = await this.loadReactions(recordingFilename);
     
-    //find if user already has this specific reaction
+    //find if user already has this specific reaction type (regardless of tone)
     const existingIndex = reactionsData.reactions.findIndex(
-      r => r.userId === userId && r.reaction === reactionType
+      r => r.userId === userId && r.reaction.type === reactionType
     );
     
     if (existingIndex >= 0) {
-      //user already has this reaction, don't add duplicate
-      return {
-        success: true,
-        summary: reactionsData.summary,
-        userReactions: this.getUserReactions(reactionsData, userId)
-      };
+      //update the tone for existing reaction
+      reactionsData.reactions[existingIndex].reaction.tone = tone;
+      reactionsData.reactions[existingIndex].timestamp = new Date().toISOString();
+    } else {
+      //add new reaction (user can have multiple different reaction types)
+      reactionsData.reactions.push({
+        userId,
+        reaction: {
+          type: reactionType,
+          tone: tone
+        },
+        timestamp: new Date().toISOString()
+      });
+      
+      //update summary (only increment for new reactions)
+      reactionsData.summary[reactionType]++;
     }
-    
-    //add new reaction (user can have multiple different reactions)
-    reactionsData.reactions.push({
-      userId,
-      reaction: reactionType,
-      timestamp: new Date().toISOString()
-    });
-    
-    //update summary
-    reactionsData.summary[reactionType]++
     
     //save updated reactions
     await this.saveReactions(recordingFilename, reactionsData);
@@ -146,7 +198,7 @@ class ReactionService {
     if (reactionType) {
       //remove specific reaction type
       const existingIndex = reactionsData.reactions.findIndex(
-        r => r.userId === userId && r.reaction === reactionType
+        r => r.userId === userId && r.reaction.type === reactionType
       );
       
       if (existingIndex >= 0) {
@@ -154,8 +206,8 @@ class ReactionService {
         reactionsData.reactions.splice(existingIndex, 1);
         
         //update summary
-        if (reactionsData.summary[removedReaction.reaction] > 0) {
-          reactionsData.summary[removedReaction.reaction]--;
+        if (reactionsData.summary[removedReaction.reaction.type] > 0) {
+          reactionsData.summary[removedReaction.reaction.type]--;
         }
         removed = true;
       }
@@ -166,8 +218,8 @@ class ReactionService {
       
       //update summary for each removed reaction
       userReactions.forEach(reaction => {
-        if (reactionsData.summary[reaction.reaction] > 0) {
-          reactionsData.summary[reaction.reaction]--;
+        if (reactionsData.summary[reaction.reaction.type] > 0) {
+          reactionsData.summary[reaction.reaction.type]--;
         }
       });
       

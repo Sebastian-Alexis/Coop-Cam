@@ -13,7 +13,7 @@ import { fetchWeatherData, getCacheStatus } from './services/weatherService.js';
 import MotionDetectionService from './services/motionDetectionService.js';
 import RecordingService from './services/recordingService.js';
 import ThumbnailService from './services/thumbnailService.js';
-import ReactionService, { REACTION_TYPES } from './services/reactionService.js';
+import ReactionService, { REACTION_TYPES, CHICKEN_TONES } from './services/reactionService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -684,7 +684,8 @@ app.get('/api/recordings/recent', async (req, res) => {
     res.json({
       success: true,
       recordings: recordingsWithUrls,
-      reactionTypes: REACTION_TYPES
+      reactionTypes: REACTION_TYPES,
+      chickenTones: CHICKEN_TONES
     });
   } catch (error) {
     console.error('[Recordings API] Error getting recent recordings:', error);
@@ -802,7 +803,9 @@ app.get('/api/recordings/:filename/reactions', async (req, res) => {
     res.json({
       success: true,
       ...reactions,
-      reactionTypes: REACTION_TYPES
+      reactionTypes: REACTION_TYPES,
+      chickenTones: CHICKEN_TONES,
+      chickenTones: CHICKEN_TONES
     });
   } catch (error) {
     console.error('[Reactions API] Error getting reactions:', error);
@@ -818,7 +821,7 @@ app.get('/api/recordings/:filename/reactions', async (req, res) => {
 app.post('/api/recordings/:filename/reactions', async (req, res) => {
   try {
     const filename = req.params.filename;
-    const { reaction } = req.body;
+    const { reaction, tone } = req.body;
     const userId = req.cookies?.viewerId || req.headers['x-viewer-id'];
     
     if (!userId) {
@@ -837,7 +840,7 @@ app.post('/api/recordings/:filename/reactions', async (req, res) => {
       });
     }
     
-    const result = await reactionService.addReaction(filename, userId, reaction);
+    const result = await reactionService.addReaction(filename, userId, reaction, tone);
     res.json(result);
   } catch (error) {
     console.error('[Reactions API] Error adding reaction:', error);
@@ -894,7 +897,8 @@ app.post('/api/recordings/reactions/batch', async (req, res) => {
     res.json({
       success: true,
       reactions,
-      reactionTypes: REACTION_TYPES
+      reactionTypes: REACTION_TYPES,
+      chickenTones: CHICKEN_TONES
     });
   } catch (error) {
     console.error('[Reactions API] Error getting batch reactions:', error);
