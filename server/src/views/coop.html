@@ -994,6 +994,9 @@
       };
       
       streamImg.onload = function() {
+        // Call the original handler to show the stream
+        handleStreamLoad();
+        
         // Reset stall detection timer on each frame
         resetStallDetection();
         
@@ -2111,7 +2114,6 @@
     updateRecordings();
     updateFullscreenButton();
     initializeSSE();
-    requestNotificationPermission();
     checkPauseStatus();
     
     //periodic updates

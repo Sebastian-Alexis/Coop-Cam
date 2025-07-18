@@ -45,6 +45,8 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Serve art assets
 app.use('/art', express.static(path.join(__dirname, '..', '..', 'art')));
+// Serve reactions assets
+app.use('/art/reactions', express.static(path.join(__dirname, '..', '..', 'reactions')));
 
 // Create MJPEG proxy instance
 const mjpegProxy = new MjpegProxy(DROIDCAM_URL, {

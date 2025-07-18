@@ -414,6 +414,11 @@
 }
 
 /* ===== Pull to Refresh ===== */
+/* Disable browser's native pull-to-refresh */
+body {
+  overscroll-behavior-y: contain;
+}
+
 .pull-to-refresh-indicator {
   position: absolute;
   top: 0;
@@ -431,21 +436,16 @@
 
 .pull-to-refresh-content {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
   padding: 1rem;
 }
 
 .pull-to-refresh-icon {
   transition: transform 0.3s ease;
   color: var(--fallback-bc, oklch(var(--bc)));
-}
-
-.pull-to-refresh-text {
-  font-size: 0.875rem;
-  color: var(--fallback-bc, oklch(var(--bc)));
-  opacity: 0.7;
+  width: 32px;
+  height: 32px;
 }
 
 .pull-to-refresh-indicator.refreshing .pull-to-refresh-icon {

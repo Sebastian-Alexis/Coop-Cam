@@ -280,7 +280,6 @@ export class PullToRefresh {
         <svg class="pull-to-refresh-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M4 12C4 7.58172 7.58172 4 12 4C14.4817 4 16.6932 5.20883 18.0615 7.05766L16.5 7C16.2239 7 16 7.22386 16 7.5C16 7.77614 16.2239 8 16.5 8H19.5C19.7761 8 20 7.77614 20 7.5V4.5C20 4.22386 19.7761 4 19.5 4C19.2239 4 19 4.22386 19 4.5V6.08296C17.5227 3.57006 14.9505 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 11.7239 21.7761 11.5 21.5 11.5C21.2239 11.5 21 11.7239 21 12C21 16.4183 17.4183 20 12 20C7.58172 20 4 16.4183 4 12Z" fill="currentColor"/>
         </svg>
-        <span class="pull-to-refresh-text">Pull to refresh</span>
       </div>
     `;
     
@@ -328,18 +327,11 @@ export class PullToRefresh {
     
     const icon = this.indicator.querySelector('.pull-to-refresh-icon');
     icon.style.transform = `rotate(${progress * 360}deg)`;
-    
-    if (progress >= 1) {
-      this.indicator.querySelector('.pull-to-refresh-text').textContent = 'Release to refresh';
-    } else {
-      this.indicator.querySelector('.pull-to-refresh-text').textContent = 'Pull to refresh';
-    }
   }
   
   refresh() {
     this.isRefreshing = true;
     this.indicator.classList.add('refreshing');
-    this.indicator.querySelector('.pull-to-refresh-text').textContent = 'Refreshing...';
     
     this.options.onRefresh(() => {
       this.reset();
