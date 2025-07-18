@@ -1518,34 +1518,50 @@
                     .filter(([_, count]) => count > 0)
                     .sort((a, b) => b[1] - a[1]);
                   
-                  return topReactions.map(([type, count]) => {
-                    //check if user has this reaction and get their tone
-                    const userReaction = recording.reactions?.userReactions?.find(r => 
-                      typeof r === 'string' ? r === type : r.type === type
-                    );
-                    const hasUserReaction = !!userReaction;
-                    const userTone = typeof userReaction === 'object' ? userReaction.tone : 'marshmallow';
+                  let badgesHTML = '';
+                  
+                  //first, show user's reactions with their specific tones
+                  const userReactionTypes = new Set();
+                  if (recording.reactions?.userReactions && recording.reactions.userReactions.length > 0) {
+                    recording.reactions.userReactions.forEach(reaction => {
+                      const type = typeof reaction === 'string' ? reaction : reaction.type;
+                      const tone = typeof reaction === 'object' ? reaction.tone : 'marshmallow';
+                      const imagePath = getReactionImagePath(type, tone);
+                      
+                      userReactionTypes.add(type);
+                      
+                      //get count for this type from summary
+                      const count = recording.reactions.summary[type] || 0;
+                      
+                      badgesHTML += `
+                        <div class="reaction-item user-reaction" 
+                             onclick="event.stopPropagation(); selectReaction('${recording.filename}', '${type}')"
+                             title="React with ${type} (${tone})">
+                          <img src="${imagePath}" alt="${type}" 
+                               onerror="handleReactionImageError(this, '${type}')" />
+                          <span class="reaction-count">${count > 99 ? '99+' : count}</span>
+                        </div>
+                      `;
+                    });
+                  }
+                  
+                  //then show other top reactions that user doesn't have
+                  const otherTopReactions = topReactions.filter(([type, _]) => !userReactionTypes.has(type));
+                  otherTopReactions.forEach(([type, count]) => {
+                    const imagePath = getReactionImagePath(type, 'marshmallow');
                     
-                    //determine image path based on user's tone or default
-                    let imagePath;
-                    if (hasUserReaction && userTone) {
-                      imagePath = userTone === 'marshmallow'
-                        ? `/art/reactions/marshmallow/Chicken${type.charAt(0).toUpperCase() + type.slice(1)}.gif`
-                        : `/art/reactions/${userTone}/Chicken${type.charAt(0).toUpperCase() + type.slice(1)}.gif`;
-                    } else {
-                      //default to marshmallow for non-user reactions
-                      imagePath = `/art/reactions/marshmallow/Chicken${type.charAt(0).toUpperCase() + type.slice(1)}.gif`;
-                    }
-                    
-                    return `
-                      <div class="reaction-item ${hasUserReaction ? 'user-reaction' : ''}" 
+                    badgesHTML += `
+                      <div class="reaction-item" 
                            onclick="event.stopPropagation(); selectReaction('${recording.filename}', '${type}')"
                            title="React with ${type}">
-                        <img src="${imagePath}" alt="${type}" />
+                        <img src="${imagePath}" alt="${type}" 
+                             onerror="handleReactionImageError(this, '${type}')" />
                         <span class="reaction-count">${count > 99 ? '99+' : count}</span>
                       </div>
                     `;
-                  }).join('');
+                  });
+                  
+                  return badgesHTML;
                 })()}
               </div>
             </div>
@@ -1609,22 +1625,20 @@
           title="Change color for all reactions (currently: ${currentTone})"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2v6m0 0l3-3m-3 3l-3-3"/>
-            <path d="M12 22v-6m0 0l3 3m-3-3l-3 3"/>
-            <path d="M2 12h6m0 0l-3-3m3 3l-3 3"/>
-            <path d="M22 12h-6m0 0l3-3m-3 3l3 3"/>
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 12a10 10 0 0 1 18.8-4.3M22 12a10 10 0 0 1-18.8 4.3"/>
           </svg>
         </button>
       `;
       
       //then add all reaction buttons
       html += Object.entries(window.reactionTypes || {}).map(([type, imageSrc]) => {
-        const isActive = recording.reactions?.userReactions?.includes(type) || false;
+        //check if user has this reaction with the current tone
+        const isActive = recording.reactions?.userReactions?.some(r => 
+          (typeof r === 'string' ? r === type : r.type === type && r.tone === currentTone)
+        ) || false;
         
         //get image path based on current global tone
-        const imagePath = currentTone === 'marshmallow'
-          ? `/art/reactions/marshmallow/Chicken${type.charAt(0).toUpperCase() + type.slice(1)}.gif`
-          : `/art/reactions/${currentTone}/Chicken${type.charAt(0).toUpperCase() + type.slice(1)}.gif`;
+        const imagePath = getReactionImagePath(type, currentTone);
         
         return `
           <button
@@ -1633,7 +1647,8 @@
             onclick="selectReaction('${filename}', '${type}')"
             title="${type}"
           >
-            <img src="${imagePath}" alt="${type}" class="reaction-option-img" />
+            <img src="${imagePath}" alt="${type}" class="reaction-option-img" 
+                 onerror="handleReactionImageError(this, '${type}')" />
           </button>
         `;
       }).join('');
@@ -1746,13 +1761,21 @@
       const popup = document.getElementById('globalReactionPopup');
       const option = popup.querySelector(`.reaction-option[data-reaction="${reactionType}"]`);
       const isActive = option?.classList.contains('active') || false;
+      const currentTone = window.globalReactionTone || 'marshmallow';
       
-      //check if user already has this reaction from the actual UI
-      const container = document.querySelector(`.reactions-container[data-filename="${filename}"]`);
-      const reactionItem = container.querySelector(`.reaction-item img[alt="${reactionType}"]`)?.closest('.reaction-item');
-      const hasReaction = reactionItem?.classList.contains('user-reaction') || false;
+      //get the recording's reaction data
+      const recording = window.lastRecordingsData?.recordings?.find(r => r.filename === filename);
+      
+      //check if user has this specific reaction with the current tone
+      let hasReactionWithCurrentTone = false;
+      if (recording?.reactions?.userReactions) {
+        hasReactionWithCurrentTone = recording.reactions.userReactions.some(r => 
+          (typeof r === 'string' ? r === reactionType : r.type === reactionType && r.tone === currentTone)
+        );
+      }
       
       //add animation to the trigger button
+      const container = document.querySelector(`.reactions-container[data-filename="${filename}"]`);
       const trigger = container.querySelector('.reaction-trigger');
       if (trigger) {
         trigger.style.animation = 'none';
@@ -1761,26 +1784,25 @@
       
       try {
         let response;
-        if (hasReaction) {
-          //remove reaction
+        if (hasReactionWithCurrentTone) {
+          //remove specific reaction with tone
           response = await fetch(`/api/recordings/${filename}/reactions`, {
             method: 'DELETE',
             headers: {
               'Content-Type': 'application/json',
               'x-viewer-id': viewerId
             },
-            body: JSON.stringify({ reactionType })
+            body: JSON.stringify({ reactionType, tone: currentTone })
           });
         } else {
-          //add reaction with global tone
-          const tone = window.globalReactionTone || 'marshmallow';
+          //add reaction with current tone
           response = await fetch(`/api/recordings/${filename}/reactions`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'x-viewer-id': viewerId
             },
-            body: JSON.stringify({ reaction: reactionType, tone: tone })
+            body: JSON.stringify({ reaction: reactionType, tone: currentTone })
           });
         }
         
@@ -1789,6 +1811,15 @@
         if (data.success) {
           //update UI with new reaction data
           updateReactionUI(filename, data.summary, data.userReactions);
+          
+          //update cached recording data
+          if (window.lastRecordingsData?.recordings) {
+            const recording = window.lastRecordingsData.recordings.find(r => r.filename === filename);
+            if (recording && recording.reactions) {
+              recording.reactions.summary = data.summary;
+              recording.reactions.userReactions = data.userReactions;
+            }
+          }
         }
       } catch (error) {
         console.error('Failed to toggle reaction:', error);
@@ -1803,9 +1834,13 @@
       //update global popup if it's showing this recording's reactions
       const globalPopup = document.getElementById('globalReactionPopup');
       if (globalPopup.dataset.currentFilename === filename) {
+        const currentTone = window.globalReactionTone || 'marshmallow';
         globalPopup.querySelectorAll('.reaction-option').forEach(option => {
           const reactionType = option.dataset.reaction;
-          if (userReactions?.includes(reactionType)) {
+          const hasReactionWithTone = userReactions?.some(r => 
+            (typeof r === 'string' ? r === reactionType : r.type === reactionType && r.tone === currentTone)
+          );
+          if (hasReactionWithTone) {
             option.classList.add('active');
           } else {
             option.classList.remove('active');
@@ -1824,31 +1859,45 @@
         //calculate total
         const totalReactions = Object.values(summary).reduce((sum, count) => sum + count, 0);
         
-        //rebuild badges HTML
-        let badgesHTML = topReactions.map(([type, count]) => {
-          //check if user has this reaction and get their tone
-          const userReaction = userReactions?.find(r => 
-            typeof r === 'string' ? r === type : r.type === type
-          );
-          const hasUserReaction = !!userReaction;
-          const userTone = typeof userReaction === 'object' ? userReaction.tone : 'marshmallow';
-          
-          //determine image path based on user's tone or default
-          let imagePath;
-          if (hasUserReaction && userTone) {
-            imagePath = userTone === 'marshmallow'
-              ? `/art/reactions/marshmallow/Chicken${type.charAt(0).toUpperCase() + type.slice(1)}.gif`
-              : `/art/reactions/${userTone}/Chicken${type.charAt(0).toUpperCase() + type.slice(1)}.gif`;
-          } else {
-            //default to marshmallow for non-user reactions
-            imagePath = `/art/reactions/marshmallow/Chicken${type.charAt(0).toUpperCase() + type.slice(1)}.gif`;
-          }
+        //rebuild badges HTML - show each user reaction with its specific tone
+        let badgesHTML = '';
+        
+        //first, show user's reactions with their specific tones
+        const userReactionTypes = new Set();
+        if (userReactions && userReactions.length > 0) {
+          userReactions.forEach(reaction => {
+            const type = typeof reaction === 'string' ? reaction : reaction.type;
+            const tone = typeof reaction === 'object' ? reaction.tone : 'marshmallow';
+            const imagePath = getReactionImagePath(type, tone);
+            
+            userReactionTypes.add(type);
+            
+            //get count for this type from summary
+            const count = summary[type] || 0;
+            
+            badgesHTML += `
+              <div class="reaction-item user-reaction"
+                   onclick="event.stopPropagation(); selectReaction('${filename}', '${type}')"
+                   title="React with ${type} (${tone})">
+                <img src="${imagePath}" alt="${type}" 
+                     onerror="handleReactionImageError(this, '${type}')" />
+                <span class="reaction-count">${count > 99 ? '99+' : count}</span>
+              </div>
+            `;
+          });
+        }
+        
+        //then show other top reactions that user doesn't have
+        const otherTopReactions = topReactions.filter(([type, _]) => !userReactionTypes.has(type));
+        badgesHTML += otherTopReactions.map(([type, count]) => {
+          const imagePath = getReactionImagePath(type, 'marshmallow');
           
           return `
-            <div class="reaction-item ${hasUserReaction ? 'user-reaction' : ''}"
+            <div class="reaction-item"
                  onclick="event.stopPropagation(); selectReaction('${filename}', '${type}')"
                  title="React with ${type}">
-              <img src="${imagePath}" alt="${type}" />
+              <img src="${imagePath}" alt="${type}" 
+                   onerror="handleReactionImageError(this, '${type}')" />
               <span class="reaction-count">${count > 99 ? '99+' : count}</span>
             </div>
           `;
@@ -1904,10 +1953,103 @@
     //load preference on page load
     loadTonePreference();
     
+    //helper function to get correct reaction image path
+    function getReactionImagePath(reactionType, tone) {
+      //map reaction types to actual filenames
+      const typeMap = {
+        'jump': 'Jumping',    // fix: jump -> ChickenJumping.gif
+        'sleeping': 'Sleeping',
+        'peck': 'Peck',
+        'fly': 'Fly',
+        'love': 'Love'
+      };
+      
+      const mappedType = typeMap[reactionType] || reactionType;
+      
+      //handle typo in love files for specific tones
+      if (reactionType === 'love' && (tone === 'cheetopuff' || tone === 'marshmallow')) {
+        return `/art/reactions/${tone}/ChichkenLove.gif`;
+      }
+      
+      //standard path
+      return `/art/reactions/${tone}/Chicken${mappedType}.gif`;
+    }
+    
+    //handle reaction image load errors
+    function handleReactionImageError(img, reactionType) {
+      console.warn(`Failed to load reaction image: ${img.src}`);
+      
+      //try fallback strategies in order
+      const currentSrc = img.src;
+      let fallbackSrc = null;
+      
+      //extract current tone from path
+      const toneMatch = currentSrc.match(/\/reactions\/([^\/]+)\//);
+      const currentTone = toneMatch ? toneMatch[1] : 'marshmallow';
+      
+      //strategy 1: try marshmallow tone if not already
+      if (currentTone !== 'marshmallow') {
+        fallbackSrc = getReactionImagePath(reactionType, 'marshmallow');
+      }
+      //strategy 2: try root reactions folder
+      else {
+        const typeMap = {
+          'jump': 'ChickenJump.gif',
+          'sleeping': 'ChickenSleeping.gif',
+          'peck': 'ChickenPeck.gif',
+          'fly': 'ChickenFly.gif',
+          'love': 'ChickenLove.gif'
+        };
+        fallbackSrc = `/art/reactions/${typeMap[reactionType] || 'ChickenLove.gif'}`;
+      }
+      
+      //prevent infinite loops
+      if (!img.dataset.fallbackAttempted && fallbackSrc && fallbackSrc !== currentSrc) {
+        img.dataset.fallbackAttempted = 'true';
+        img.src = fallbackSrc;
+      } else {
+        //final fallback: use text emoji
+        const emojiMap = {
+          'jump': '🦘',
+          'sleeping': '😴',
+          'peck': '🐓',
+          'fly': '🦅',
+          'love': '❤️'
+        };
+        
+        //replace image with emoji span
+        const emoji = document.createElement('span');
+        emoji.style.fontSize = '24px';
+        emoji.style.display = 'inline-block';
+        emoji.style.width = '30px';
+        emoji.style.height = '30px';
+        emoji.style.lineHeight = '30px';
+        emoji.style.textAlign = 'center';
+        emoji.textContent = emojiMap[reactionType] || '🐔';
+        emoji.title = reactionType;
+        
+        img.parentElement.replaceChild(emoji, img);
+      }
+    }
+    
+    //cooldown state for cycle button
+    let cycleButtonCooldown = false;
+    
     //cycle global tone for all reactions
     function cycleGlobalTone(event) {
       event.stopPropagation();
       event.preventDefault();
+      
+      //check cooldown
+      if (cycleButtonCooldown) {
+        return;
+      }
+      
+      //set cooldown
+      cycleButtonCooldown = true;
+      setTimeout(() => {
+        cycleButtonCooldown = false;
+      }, 300); // 300ms cooldown
       
       //get current tone
       const currentIndex = TONE_ORDER.indexOf(window.globalReactionTone);
@@ -1924,13 +2066,13 @@
       
       reactionImages.forEach(img => {
         const reactionType = img.alt;
-        const newImagePath = nextTone === 'marshmallow'
-          ? `/art/reactions/marshmallow/Chicken${reactionType.charAt(0).toUpperCase() + reactionType.slice(1)}.gif`
-          : `/art/reactions/${nextTone}/Chicken${reactionType.charAt(0).toUpperCase() + reactionType.slice(1)}.gif`;
+        const newImagePath = getReactionImagePath(reactionType, nextTone);
         
         //fade effect
         img.style.opacity = '0.5';
         setTimeout(() => {
+          //reset fallback flag when changing tones
+          delete img.dataset.fallbackAttempted;
           img.src = newImagePath;
           img.style.opacity = '1';
         }, 100);
@@ -1940,46 +2082,13 @@
       const cycleButton = event.target.closest('.tone-cycle-button');
       if (cycleButton) {
         cycleButton.title = `Change color for all reactions (currently: ${nextTone})`;
-        showToneTooltip(cycleButton, nextTone);
+        
+        //add visual feedback for cooldown
+        cycleButton.style.opacity = '0.6';
+        setTimeout(() => {
+          cycleButton.style.opacity = '1';
+        }, 300);
       }
-    }
-    
-    //show tone name tooltip
-    function showToneTooltip(element, toneName) {
-      //create tooltip element
-      const tooltip = document.createElement('div');
-      tooltip.className = 'tone-tooltip';
-      tooltip.textContent = toneName;
-      tooltip.style.cssText = `
-        position: absolute;
-        background: rgba(0, 0, 0, 0.8);
-        color: white;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 12px;
-        pointer-events: none;
-        z-index: 10001;
-        white-space: nowrap;
-      `;
-      
-      //position above the element
-      document.body.appendChild(tooltip);
-      const rect = element.getBoundingClientRect();
-      tooltip.style.left = `${rect.left + rect.width / 2 - tooltip.offsetWidth / 2}px`;
-      tooltip.style.top = `${rect.top - tooltip.offsetHeight - 5}px`;
-      
-      //fade in
-      tooltip.style.opacity = '0';
-      requestAnimationFrame(() => {
-        tooltip.style.transition = 'opacity 0.2s';
-        tooltip.style.opacity = '1';
-      });
-      
-      //remove after delay
-      setTimeout(() => {
-        tooltip.style.opacity = '0';
-        setTimeout(() => tooltip.remove(), 200);
-      }, 1000);
     }
     
     //update only reactions for all visible recordings

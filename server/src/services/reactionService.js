@@ -154,17 +154,16 @@ class ReactionService {
     //load current reactions
     const reactionsData = await this.loadReactions(recordingFilename);
     
-    //find if user already has this specific reaction type (regardless of tone)
+    //find if user already has this specific reaction type WITH the same tone
     const existingIndex = reactionsData.reactions.findIndex(
-      r => r.userId === userId && r.reaction.type === reactionType
+      r => r.userId === userId && r.reaction.type === reactionType && r.reaction.tone === tone
     );
     
     if (existingIndex >= 0) {
-      //update the tone for existing reaction
-      reactionsData.reactions[existingIndex].reaction.tone = tone;
+      //update timestamp for existing reaction (same type and tone)
       reactionsData.reactions[existingIndex].timestamp = new Date().toISOString();
     } else {
-      //add new reaction (user can have multiple different reaction types)
+      //add new reaction (user can have multiple of same type with different tones)
       reactionsData.reactions.push({
         userId,
         reaction: {
@@ -174,7 +173,7 @@ class ReactionService {
         timestamp: new Date().toISOString()
       });
       
-      //update summary (only increment for new reactions)
+      //update summary (increment for any new reaction, even if same type with different tone)
       reactionsData.summary[reactionType]++;
     }
     
@@ -189,28 +188,45 @@ class ReactionService {
   }
 
   //remove a specific user's reaction
-  async removeReaction(recordingFilename, userId, reactionType = null) {
+  async removeReaction(recordingFilename, userId, reactionType = null, tone = null) {
     //load current reactions
     const reactionsData = await this.loadReactions(recordingFilename);
     
     let removed = false;
     
     if (reactionType) {
-      //remove specific reaction type
-      const existingIndex = reactionsData.reactions.findIndex(
-        r => r.userId === userId && r.reaction.type === reactionType
-      );
+      //find reactions to remove based on criteria
+      let toRemove = [];
       
-      if (existingIndex >= 0) {
-        const removedReaction = reactionsData.reactions[existingIndex];
-        reactionsData.reactions.splice(existingIndex, 1);
+      if (tone) {
+        //remove specific reaction type with specific tone
+        const existingIndex = reactionsData.reactions.findIndex(
+          r => r.userId === userId && r.reaction.type === reactionType && r.reaction.tone === tone
+        );
+        if (existingIndex >= 0) {
+          toRemove.push(existingIndex);
+        }
+      } else {
+        //remove all reactions of this type regardless of tone (backward compatibility)
+        reactionsData.reactions.forEach((r, index) => {
+          if (r.userId === userId && r.reaction.type === reactionType) {
+            toRemove.push(index);
+          }
+        });
+      }
+      
+      //remove reactions in reverse order to maintain indices
+      toRemove.sort((a, b) => b - a);
+      toRemove.forEach(index => {
+        const removedReaction = reactionsData.reactions[index];
+        reactionsData.reactions.splice(index, 1);
         
         //update summary
         if (reactionsData.summary[removedReaction.reaction.type] > 0) {
           reactionsData.summary[removedReaction.reaction.type]--;
         }
         removed = true;
-      }
+      });
     } else {
       //remove all reactions from this user (backward compatibility)
       const userReactions = reactionsData.reactions.filter(r => r.userId === userId);
