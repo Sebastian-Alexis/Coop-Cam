@@ -412,3 +412,271 @@
 .safe-area-inset-bottom {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* ===== Pull to Refresh ===== */
+.pull-to-refresh-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 0;
+  overflow: hidden;
+  background: var(--fallback-b2, oklch(var(--b2)));
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  transition: opacity 0.2s ease;
+  z-index: 100;
+}
+
+.pull-to-refresh-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+
+.pull-to-refresh-icon {
+  transition: transform 0.3s ease;
+  color: var(--fallback-bc, oklch(var(--bc)));
+}
+
+.pull-to-refresh-text {
+  font-size: 0.875rem;
+  color: var(--fallback-bc, oklch(var(--bc)));
+  opacity: 0.7;
+}
+
+.pull-to-refresh-indicator.refreshing .pull-to-refresh-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ===== Swipe Navigation Indicator ===== */
+.swipe-indicator {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.swipe-indicator.left {
+  left: 1rem;
+}
+
+.swipe-indicator.right {
+  right: 1rem;
+}
+
+.swipe-indicator.show {
+  opacity: 1;
+}
+
+/* ===== Pinch to Zoom ===== */
+.pinch-zoom-container {
+  overflow: hidden;
+  position: relative;
+  touch-action: none;
+}
+
+.pinch-zoom-content {
+  transform-origin: center center;
+  transition: transform 0.2s ease;
+}
+
+/* ===== Context Menu ===== */
+.context-menu {
+  position: fixed;
+  background: var(--fallback-b1, oklch(var(--b1)));
+  border: 1px solid var(--fallback-b3, oklch(var(--b3)));
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 180px;
+  opacity: 0;
+  transform: scale(0.95);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.context-menu.show {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  border-radius: 0.375rem;
+  margin: 0.25rem;
+}
+
+.context-menu-item:hover {
+  background: var(--fallback-b2, oklch(var(--b2)));
+}
+
+.context-menu-divider {
+  height: 1px;
+  background: var(--fallback-b3, oklch(var(--b3)));
+  margin: 0.25rem 0;
+}
+
+/* ===== Enhanced FAB ===== */
+.fab-container {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 997;
+}
+
+.fab {
+  width: 56px;
+  height: 56px;
+  border-radius: 28px;
+  background: var(--fallback-p, oklch(var(--p)));
+  color: var(--fallback-pc, oklch(var(--pc)));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+}
+
+.fab:active {
+  transform: scale(0.95);
+}
+
+.fab.expanded {
+  border-radius: 1rem;
+  width: auto;
+  padding: 0 1rem;
+}
+
+/* FAB Menu */
+.fab-menu {
+  position: absolute;
+  bottom: 70px;
+  right: 0;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.75rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.fab-menu.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.fab-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--fallback-b1, oklch(var(--b1)));
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+  transform: translateX(10px);
+  opacity: 0;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.fab-menu.show .fab-menu-item {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.fab-menu.show .fab-menu-item:nth-child(1) {
+  transition-delay: 0.05s;
+}
+
+.fab-menu.show .fab-menu-item:nth-child(2) {
+  transition-delay: 0.1s;
+}
+
+.fab-menu.show .fab-menu-item:nth-child(3) {
+  transition-delay: 0.15s;
+}
+
+.fab-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 996;
+}
+
+.fab-overlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ===== Mobile Modal Enhancements ===== */
+@media (max-width: 767px) {
+  .modal-mobile-optimized {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 90vh;
+    border-radius: 1rem 1rem 0 0;
+    animation: slide-up 0.3s ease;
+  }
+  
+  @keyframes slide-up {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+  
+  .modal-mobile-handle {
+    width: 48px;
+    height: 4px;
+    background: var(--fallback-b3, oklch(var(--b3)));
+    border-radius: 2px;
+    margin: 0.75rem auto;
+  }
+}
+
+/* ===== Haptic Feedback Classes ===== */
+.haptic-light {
+  /* Trigger light haptic feedback via JS */
+}
+
+.haptic-medium {
+  /* Trigger medium haptic feedback via JS */
+}
+
+.haptic-heavy {
+  /* Trigger heavy haptic feedback via JS */
+}

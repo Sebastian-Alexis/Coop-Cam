@@ -941,6 +941,21 @@ app.get('/mobile.css', (req, res) => {
   });
 });
 
+// Serve gestures JS module
+app.get('/gestures.js', (req, res) => {
+  const filePath = path.join(__dirname, 'views', 'gestures.js');
+  res.set({
+    'Content-Type': 'application/javascript',
+    'Cache-Control': 'public, max-age=3600'
+  });
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      console.error('Error serving gestures.js:', err);
+      res.status(404).send('File not found');
+    }
+  });
+});
+
 // Catch-all route for undefined paths
 app.get('*', (req, res, next) => {
   // Skip if it's an API route or a static file

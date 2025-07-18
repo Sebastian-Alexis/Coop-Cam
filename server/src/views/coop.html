@@ -677,7 +677,8 @@
 
   <!-- Video Playback Modal -->
   <dialog id="videoModal" class="modal">
-    <div class="modal-box max-w-4xl">
+    <div class="modal-box max-w-4xl modal-mobile-optimized">
+      <div class="modal-mobile-handle mobile-only"></div>
       <h3 class="font-bold text-lg mb-4" id="videoTitle">Recording Playback</h3>
       <div class="relative">
         <video id="modalVideo" controls class="w-full rounded-lg" preload="metadata">
@@ -709,6 +710,85 @@
     const MAX_RETRY_COUNT = 10;
     const RETRY_DELAY = 2000; // Start with 2 seconds
     const MAX_MOTION_EVENTS = 50;
+    
+    //FAB toggle function
+    function toggleFAB() {
+      const fabMenu = document.getElementById('fabMenu');
+      const fabOverlay = document.querySelector('.fab-overlay');
+      const fabButton = document.getElementById('fabButton');
+      
+      if (fabMenu && fabMenu.classList.contains('show')) {
+        fabMenu.classList.remove('show');
+        if (fabOverlay) fabOverlay.classList.remove('show');
+        if (fabButton) fabButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>';
+      } else if (fabMenu) {
+        fabMenu.classList.add('show');
+        if (fabOverlay) fabOverlay.classList.add('show');
+        if (fabButton) fabButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>';
+      }
+    }
+    
+    //context menu functions
+    function shareStream() {
+      hideContextMenu();
+      if (navigator.share) {
+        navigator.share({
+          title: 'Alexis Family Coop Live Stream',
+          text: 'Check out our chicken coop live stream!',
+          url: window.location.href
+        }).catch(err => console.log('Share cancelled'));
+      } else {
+        navigator.clipboard.writeText(window.location.href);
+        alert('Link copied to clipboard!');
+      }
+    }
+    
+    function saveSnapshot() {
+      hideContextMenu();
+      const stream = document.getElementById('stream');
+      const canvas = document.createElement('canvas');
+      canvas.width = stream.naturalWidth || stream.width;
+      canvas.height = stream.naturalHeight || stream.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(stream, 0, 0);
+      
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `coop-snapshot-${Date.now()}.jpg`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }, 'image/jpeg', 0.9);
+    }
+    
+    function reportIssue() {
+      hideContextMenu();
+      window.location.href = 'https://github.com/Sebastian-Alexis/Coop-Cam/issues/new';
+    }
+    
+    function showContextMenu(x, y) {
+      const menu = document.getElementById('contextMenu');
+      if (!menu) return;
+      
+      menu.style.left = `${x}px`;
+      menu.style.top = `${y}px`;
+      
+      const rect = menu.getBoundingClientRect();
+      if (rect.right > window.innerWidth) {
+        menu.style.left = `${window.innerWidth - rect.width - 10}px`;
+      }
+      if (rect.bottom > window.innerHeight) {
+        menu.style.top = `${window.innerHeight - rect.height - 10}px`;
+      }
+      
+      menu.classList.add('show');
+    }
+    
+    function hideContextMenu() {
+      const menu = document.getElementById('contextMenu');
+      if (menu) menu.classList.remove('show');
+    }
     
     //mobile navigation toggle
     function toggleMobileNav() {
@@ -2043,6 +2123,172 @@
     setInterval(checkPauseStatus, 5000); //check pause status every 5 seconds
     setInterval(updateReactionsOnly, 10000); //update reactions every 10 seconds for more responsiveness
   </script>
+  
+  <!-- Import gestures module -->
+  <script type="module">
+    import { GestureManager, SwipeNavigator, PullToRefresh } from '/gestures.js';
+    
+    // Initialize gesture support
+    let gestureManager = null;
+    let swipeNavigator = null;
+    let pullToRefresh = null;
+    let streamPinchManager = null;
+    let contextMenu = null;
+    
+    // Initialize gestures on DOM ready
+    document.addEventListener('DOMContentLoaded', () => {
+      // Only initialize on mobile
+      if (window.innerWidth <= 768) {
+        // Swipe navigation
+        swipeNavigator = new SwipeNavigator({
+          pages: [
+            { path: '/', name: 'Home' },
+            { path: '/coop', name: 'Live Stream' },
+            { path: '/about', name: 'About' }
+          ]
+        });
+        
+        // Pull to refresh on stream container
+        const streamContainer = document.getElementById('videoContainer');
+        if (streamContainer) {
+          pullToRefresh = new PullToRefresh(streamContainer, {
+            onRefresh: (done) => {
+              // Reload the stream
+              const stream = document.getElementById('stream');
+              const currentSrc = stream.src;
+              stream.src = '';
+              setTimeout(() => {
+                stream.src = currentSrc + '?t=' + Date.now();
+                done();
+              }, 500);
+            }
+          });
+        }
+        
+        // Pinch to zoom on stream
+        const stream = document.getElementById('stream');
+        if (stream) {
+          let currentScale = 1;
+          let currentX = 0;
+          let currentY = 0;
+          
+          streamPinchManager = new GestureManager(streamContainer, {
+            onPinch: ({ scale, centerX, centerY }) => {
+              currentScale = Math.max(1, Math.min(5, scale));
+              stream.style.transform = `scale(${currentScale}) translate(${currentX}px, ${currentY}px)`;
+            },
+            onPinchEnd: () => {
+              if (currentScale < 1.2) {
+                currentScale = 1;
+                currentX = 0;
+                currentY = 0;
+                stream.style.transform = 'scale(1) translate(0, 0)';
+              }
+            },
+            onDoubleTap: () => {
+              if (currentScale > 1) {
+                currentScale = 1;
+                currentX = 0;
+                currentY = 0;
+                stream.style.transform = 'scale(1) translate(0, 0)';
+              } else {
+                window.toggleFullscreen();
+              }
+            }
+          });
+        }
+        
+        // Long press context menu on stream
+        if (stream) {
+          contextMenu = new GestureManager(stream, {
+            onLongPress: ({ x, y }) => {
+              // Haptic feedback if available
+              if ('vibrate' in navigator) {
+                navigator.vibrate(50);
+              }
+              window.showContextMenu(x, y);
+            }
+          });
+        }
+        
+        // Hide context menu on outside click
+        document.addEventListener('click', (e) => {
+          if (!e.target.closest('.context-menu')) {
+            window.hideContextMenu();
+          }
+        });
+        
+        // Add swipe to dismiss for video modal
+        const videoModal = document.getElementById('videoModal');
+        if (videoModal) {
+          const modalBox = videoModal.querySelector('.modal-box');
+          if (modalBox) {
+            new GestureManager(modalBox, {
+              onSwipeDown: ({ distance }) => {
+                if (distance > 100) {
+                  videoModal.close();
+                }
+              }
+            });
+          }
+        }
+      }
+    });
+  </script>
+  
+  <!-- Floating Action Button -->
+  <div class="fab-container mobile-only">
+    <div class="fab-overlay" onclick="toggleFAB()"></div>
+    <div class="fab-menu" id="fabMenu">
+      <button class="fab-menu-item" onclick="toggleFlashlight(); toggleFAB();">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+        </svg>
+        <span>Flashlight</span>
+      </button>
+      <button class="fab-menu-item" onclick="document.getElementById('pauseBtn').click(); toggleFAB();">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
+        </svg>
+        <span>Pause Stream</span>
+      </button>
+      <button class="fab-menu-item" onclick="toggleFullscreen(); toggleFAB();">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+        </svg>
+        <span>Fullscreen</span>
+      </button>
+    </div>
+    <button class="fab" id="fabButton" onclick="toggleFAB()">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      </svg>
+    </button>
+  </div>
+  
+  <!-- Context Menu Template -->
+  <div id="contextMenu" class="context-menu">
+    <div class="context-menu-item" onclick="shareStream()">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+      </svg>
+      <span>Share</span>
+    </div>
+    <div class="context-menu-item" onclick="saveSnapshot()">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+      </svg>
+      <span>Save Snapshot</span>
+    </div>
+    <div class="context-menu-divider"></div>
+    <div class="context-menu-item" onclick="reportIssue()">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+      </svg>
+      <span>Report Issue</span>
+    </div>
+  </div>
   
   <!-- Global Reaction Popup -->
   <div id="globalReactionPopup" class="reaction-popup-global hidden" data-current-filename="" style="left: -9999px; top: -9999px;">
