@@ -1,86 +1,313 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="caramellatte">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Coop Cam</title>
-  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="/mobile.css" rel="stylesheet" type="text/css" />
-  <script type="module" src="/gestures.js"></script>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jersey+25&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  
   <style>
-    /* Custom caramellatte theme */
-    [data-theme="caramellatte"] {
-      color-scheme: light;
-      --b1: 98% 0.016 73.684;
-      --b2: 95% 0.038 75.164;
-      --b3: 90% 0.076 70.697;
-      --bc: 40% 0.123 38.172;
-      --p: 0% 0 0;
-      --pc: 100% 0 0;
-      --s: 22.45% 0.075 37.85;
-      --sc: 90% 0.076 70.697;
-      --a: 46.44% 0.111 37.85;
-      --ac: 90% 0.076 70.697;
-      --n: 55% 0.195 38.402;
-      --nc: 98% 0.016 73.684;
-      --in: 42% 0.199 265.638;
-      --inc: 90% 0.076 70.697;
-      --su: 43% 0.095 166.913;
-      --suc: 90% 0.076 70.697;
-      --wa: 82% 0.189 84.429;
-      --wac: 41% 0.112 45.904;
-      --er: 70% 0.191 22.216;
-      --erc: 39% 0.141 25.723;
-      --rounded-box: 1rem;
-      --rounded-btn: 0.5rem;
-      --rounded-badge: 2rem;
-      --animation-btn: 0.25s;
-      --animation-input: 0.2s;
-      --btn-focus-scale: 0.95;
-      --border-btn: 2px;
-      --tab-border: 2px;
-      --tab-radius: 0.5rem;
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
     
-    .handwritten {
-      font-family: 'Segoe Script', 'Bradley Hand ITC', cursive;
-      font-size: 4rem;
-      transform: rotate(-2deg);
+    body {
+      background-color: #FFF7ED;
+      height: 100vh;
+      position: relative;
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
     }
     
-    @media (max-width: 767px) {
-      .handwritten {
-        font-size: 3rem;
+    .container {
+      position: absolute;
+      left: 75px;
+      top: 75px;
+      width: 844px;
+    }
+    
+    .title-section {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    
+    h1 {
+      font-family: 'Jersey 25', sans-serif;
+      font-size: 64px;
+      font-weight: 400;
+      color: #8C3F27;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      margin: 0;
+    }
+    
+    .subtitle {
+      font-family: 'Jersey 25', sans-serif;
+      font-size: 24px;
+      font-weight: 400;
+      color: rgba(0, 0, 0, 0.75);
+      line-height: 1.5;
+      margin: 0;
+    }
+    
+    .button-container {
+      margin-top: 40px;
+    }
+    
+    .cta-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 231px;
+      height: 76px;
+      background-color: #8C3F27;
+      color: white;
+      font-family: 'Inter', sans-serif;
+      font-size: 24px;
+      font-weight: 500;
+      text-decoration: none;
+      border-radius: 8px;
+      box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.05);
+      transition: all 0.2s ease;
+    }
+    
+    .cta-button:hover {
+      background-color: #7A3422;
+      transform: translateY(-1px);
+      box-shadow: 0px 4px 8px 0px rgba(0, 0, 0, 0.1);
+    }
+    
+    .chicken-image {
+      position: absolute;
+      left: 805px;
+      bottom: 40px;
+      width: 593px;
+      height: 593px;
+      object-fit: cover;
+      border-radius: 12px;
+      image-rendering: pixelated;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: crisp-edges;
+      -ms-interpolation-mode: nearest-neighbor;
+    }
+    
+    .footer-links {
+      position: absolute;
+      bottom: 40px;
+      left: 0;
+      width: 100%;
+      height: 34px;
+    }
+    
+    .footer-link {
+      position: absolute;
+      top: 0;
+      font-family: 'Inter', sans-serif;
+      font-size: 17px;
+      font-weight: 500;
+      color: #62523E;
+      text-decoration: underline;
+      padding: 6px 12px;
+      transition: color 0.2s ease;
+    }
+    
+    .footer-link:hover {
+      color: #8C3F27;
+    }
+    
+    .github-link {
+      left: 170px;
+    }
+    
+    .contact-link {
+      left: 265px;
+    }
+    
+    .devlogs-link {
+      left: 75px;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 1440px) {
+      .chicken-image {
+        width: 450px;
+        height: 450px;
+        bottom: 40px;
+        left: 720px;
+      }
+    }
+    
+    @media (max-width: 1280px) {
+      .container {
+        left: 40px;
+        top: 40px;
+        width: 600px;
+      }
+      
+      .chicken-image {
+        width: 350px;
+        height: 350px;
+        left: 680px;
+        bottom: 40px;
+      }
+      
+      h1 {
+        font-size: 48px;
+      }
+      
+      .subtitle {
+        font-size: 20px;
+      }
+    }
+    
+    @media (max-width: 1024px) {
+      .chicken-image {
+        position: static;
+        width: 100%;
+        max-width: 400px;
+        height: 400px;
+        margin: 40px auto 0;
+        display: block;
+      }
+      
+      .container {
+        position: relative;
+        left: auto;
+        top: auto;
+        width: 90%;
+        max-width: 600px;
+        margin: 40px auto;
+      }
+      
+      .footer-links {
+        position: relative;
+        bottom: auto;
+        margin-top: 60px;
+        text-align: center;
+        display: flex;
+        justify-content: center;
+        gap: 40px;
+      }
+      
+      .footer-link {
+        position: static;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 40px;
+      }
+      
+      .subtitle {
+        font-size: 18px;
+      }
+      
+      .cta-button {
+        width: 100%;
+        max-width: 300px;
+        font-size: 20px;
+      }
+      
+      .chicken-image {
+        max-width: 300px;
+        height: 300px;
+      }
+    }
+    
+    /* Mobile-specific design (iPhone viewport) */
+    @media (max-width: 390px) {
+      .container {
+        position: static;
+        padding: 20px 21px 0;
+        width: 100%;
+        margin: 0;
+      }
+      
+      h1 {
+        text-align: center;
+        font-size: 64px;
+      }
+      
+      .subtitle {
+        text-align: center;
+        font-size: 24px;
+      }
+      
+      .cta-button {
+        width: 100%;
+        max-width: none;
+        padding: 20px 32px;
+        font-size: 24px;
+        height: auto;
+      }
+      
+      .chicken-image {
+        position: absolute;
+        width: 250px;
+        height: 250px;
+        top: 340px;
+        left: 50%;
+        transform: translateX(-50%);
+        margin: 0;
+      }
+      
+      .footer-links {
+        position: absolute;
+        bottom: 23px;
+        left: 0;
+        width: 100%;
+        height: 34px;
+        display: block;
+        margin-top: 0;
+      }
+      
+      .footer-link {
+        position: absolute;
+        top: 0;
+      }
+      
+      .github-link {
+        left: 45px;
+      }
+      
+      .devlogs-link {
+        left: 153px;
+      }
+      
+      .contact-link {
+        left: 261px;
       }
     }
   </style>
 </head>
 <body>
-  <div class="min-h-screen bg-base-100 flex flex-col items-center justify-center p-8">
-    <div class="max-w-4xl w-full text-center">
-      <!-- Handwritten Title -->
-      <h1 class="handwritten mb-12">Coop Cam</h1>
-      
-      <!-- Description -->
-      <p class="text-xl mb-12 max-w-3xl mx-auto">
-        Coop Cam is an open source chicken coop monitoring tool created by Sebastian Alexis. 
-        It is designed to be as cheap as possible while still providing you with the best 
-        possible monitoring experience.
+  <div class="container">
+    <div class="title-section">
+      <h1>Coop Cam</h1>
+      <p class="subtitle">
+        Monitor you chicken coop remotely for next to nothing, and if you want, show your chickens to the world!
       </p>
-      
-      <!-- Links -->
-      <div class="flex justify-between max-w-2xl mx-auto mb-16 gap-8">
-        <a href="https://github.com/Sebastian-Alexis/Coop-Cam" class="link link-hover text-lg touch-target inline-flex items-center">Github</a>
-        <a href="https://summer.hackclub.com/projects/5364" class="link link-hover text-lg touch-target inline-flex items-center">Devlogs</a>
-      </div>
-      
-      <!-- Buttons -->
-      <div class="flex flex-col gap-4 items-center">
-        <a href="/coop" class="btn btn-outline btn-lg touch-target-lg w-full max-w-sm">Visit My Coop!</a>
-        <a href="/about" class="btn btn-outline btn-lg touch-target-lg w-full max-w-sm">Learn About My Chickens!</a>
-      </div>
     </div>
+    
+    <div class="button-container">
+      <a href="/coop" class="cta-button">Visit My Coop!</a>
+    </div>
+  </div>
+  
+  <img src="/art/landing/chicken_coop_w_chickens.gif" alt="Chicken coop with chickens" class="chicken-image">
+  
+  <div class="footer-links">
+    <a href="https://summer.hackclub.com/projects/5364" class="footer-link devlogs-link">Devlogs</a>
+    <a href="https://github.com/Sebastian-Alexis/Coop-Cam" class="footer-link github-link">Github</a>
+    <a href="mailto:sebastian@example.com" class="footer-link contact-link">Contact</a>
   </div>
 </body>
 </html>

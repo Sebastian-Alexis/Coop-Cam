@@ -6,6 +6,7 @@
   <title>Alexis Family Coop</title>
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/js/requestQueue.js"></script>
   <link href="/mobile.css" rel="stylesheet" type="text/css" />
   <style>
     /* Custom caramellatte theme */
@@ -1096,7 +1097,11 @@
     //check flashlight status from server
     async function checkFlashlightStatus() {
       try {
-        const response = await fetch('/api/flashlight/status');
+        //use request queue on mobile
+        const response = isMobile 
+          ? await requestQueue.fetch('/api/flashlight/status', {}, { priority: 0 })
+          : await fetch('/api/flashlight/status');
+          
         const data = await response.json();
         
         //only restart countdown if flashlight is on
@@ -1254,25 +1259,70 @@
       document.getElementById('localTime').textContent = `Your time: ${localStr} ${tzAbbr}`;
     }
 
+    //handle stats update from batch or individual call
+    function handleStatsUpdate(data) {
+      const count = data.clientCount || 0;
+      document.getElementById('viewerCount').textContent = count;
+      document.getElementById('viewerText').textContent = count === 1 ? 'viewer' : 'viewers';
+    }
+    
     //update viewer count
     async function updateStats() {
       try {
-        const response = await fetch('/api/stats');
+        //use request queue on mobile
+        const response = isMobile 
+          ? await requestQueue.fetch('/api/stats', {}, { priority: 0 })
+          : await fetch('/api/stats');
+          
         const data = await response.json();
-        const count = data.clientCount || 0;
-        
-        document.getElementById('viewerCount').textContent = count;
-        document.getElementById('viewerText').textContent = count === 1 ? 'viewer' : 'viewers';
+        handleStatsUpdate(data);
       } catch (error) {
         console.error('Failed to fetch stats:', error);
       }
     }
 
-    //update weather
-    async function updateWeather() {
-      try {
-        const response = await fetch('/api/weather');
-        const result = await response.json();
+    //handle stream status update
+    function handleStreamStatusUpdate(data) {
+      if (data.isPaused) {
+        //update pause UI if needed
+        const remainingMs = data.remainingMs || 0;
+        if (remainingMs > 0) {
+          //stream is paused, update UI accordingly
+          console.log(`[Stream] Paused, ${Math.ceil(remainingMs / 1000)}s remaining`);
+        }
+      }
+    }
+    
+    //handle flashlight status update
+    function handleFlashlightStatusUpdate(data) {
+      const btn = document.getElementById('flashlightBtn');
+      if (!btn) return;
+      
+      if (data.isOn) {
+        btn.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+          </svg>
+          <span class="mobile-hide">Flashlight On</span>
+          <span class="mobile-only">On</span>
+        `;
+        btn.classList.add('btn-warning');
+        btn.classList.remove('btn-ghost');
+      } else {
+        btn.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+          </svg>
+          <span class="mobile-hide">Turn on Flashlight</span>
+          <span class="mobile-only">Flashlight</span>
+        `;
+        btn.classList.remove('btn-warning');
+        btn.classList.add('btn-ghost');
+      }
+    }
+    
+    //handle weather update from batch or individual call
+    function handleWeatherUpdate(result) {
         
         if (result.success && result.data) {
           const weather = result.data;
@@ -1338,6 +1388,18 @@
             </div>
           `;
         }
+    }
+    
+    //update weather
+    async function updateWeather() {
+      try {
+        //use request queue on mobile
+        const response = isMobile 
+          ? await requestQueue.fetch('/api/weather', {}, { priority: 0 })
+          : await fetch('/api/weather');
+          
+        const result = await response.json();
+        handleWeatherUpdate(result);
       } catch (error) {
         console.error('Failed to fetch weather:', error);
         //show error state
@@ -2089,14 +2151,19 @@
       const viewerId = getOrCreateViewerId();
       
       try {
-        const response = await fetch('/api/recordings/reactions/batch', {
+        //use request queue on mobile
+        const fetchOptions = {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'x-viewer-id': viewerId
           },
           body: JSON.stringify({ filenames })
-        });
+        };
+        
+        const response = isMobile 
+          ? await requestQueue.fetch('/api/recordings/reactions/batch', fetchOptions, { priority: 0 })
+          : await fetch('/api/recordings/reactions/batch', fetchOptions);
         
         const data = await response.json();
         
@@ -2221,16 +2288,40 @@
       }, { passive: false });
     }
     
+    //SSE connection management with exponential backoff
+    let sseReconnectDelay = 1000;
+    let sseReconnectTimer = null;
+    let sseConnectionAttempts = 0;
+    const maxSSEReconnectDelay = 30000; //max 30 seconds
+    
     //motion detection and notifications
     function initializeSSE() {
+      //clean up existing connection
       if (eventSource) {
         eventSource.close();
+        eventSource = null;
       }
       
+      //clear any pending reconnect
+      if (sseReconnectTimer) {
+        clearTimeout(sseReconnectTimer);
+        sseReconnectTimer = null;
+      }
+      
+      //don't connect if page is hidden (mobile background)
+      if (document.hidden) {
+        console.log('[SSE] Page hidden, skipping connection');
+        return;
+      }
+      
+      console.log(`[SSE] Connecting to motion events (attempt ${sseConnectionAttempts + 1})`);
       eventSource = new EventSource('/api/events/motion');
       
       eventSource.onopen = function() {
         console.log('[SSE] Connected to motion events');
+        //reset reconnect delay on successful connection
+        sseReconnectDelay = 1000;
+        sseConnectionAttempts = 0;
       };
       
       eventSource.onmessage = function(event) {
@@ -2244,8 +2335,20 @@
       
       eventSource.onerror = function(error) {
         console.error('[SSE] Connection error:', error);
-        // Reconnect after 5 seconds
-        setTimeout(initializeSSE, 5000);
+        eventSource.close();
+        eventSource = null;
+        
+        //exponential backoff with jitter
+        const jitter = Math.random() * 1000; //0-1 second jitter
+        const delay = Math.min(sseReconnectDelay + jitter, maxSSEReconnectDelay);
+        
+        console.log(`[SSE] Reconnecting in ${Math.round(delay / 1000)}s`);
+        sseConnectionAttempts++;
+        
+        sseReconnectTimer = setTimeout(() => {
+          sseReconnectDelay = Math.min(sseReconnectDelay * 2, maxSSEReconnectDelay);
+          initializeSSE();
+        }, delay);
       };
     }
     
@@ -2417,6 +2520,157 @@
       }
     });
     
+    //mobile detection and optimization
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const isFirefoxMobile = isMobile && /Firefox/i.test(navigator.userAgent);
+    
+    //batch API updates for mobile optimization
+    async function batchUpdate() {
+      if (!isMobile) {
+        //on desktop, use regular individual updates
+        updateStats();
+        updateWeather();
+        return;
+      }
+      
+      try {
+        //use batch API to reduce connections
+        const response = await requestQueue.fetch('/api/batch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            requests: [
+              { endpoint: '/api/stats' },
+              { endpoint: '/api/weather' },
+              { endpoint: '/api/stream/status' },
+              { endpoint: '/api/flashlight/status' }
+            ]
+          })
+        }, { priority: 1 });
+        
+        const data = await response.json();
+        
+        if (data.success && data.results) {
+          //process results
+          data.results.forEach(result => {
+            if (result.success) {
+              switch (result.endpoint) {
+                case '/api/stats':
+                  handleStatsUpdate(result.data);
+                  break;
+                case '/api/weather':
+                  handleWeatherUpdate({ success: true, data: result.data });
+                  break;
+                case '/api/stream/status':
+                  handleStreamStatusUpdate(result.data);
+                  break;
+                case '/api/flashlight/status':
+                  handleFlashlightStatusUpdate(result.data);
+                  break;
+              }
+            }
+          });
+        }
+      } catch (error) {
+        console.error('[Batch API] Error:', error);
+        //fallback to individual updates
+        updateStats();
+        updateWeather();
+      }
+    }
+    
+    //adjust intervals based on device type
+    const intervals = {
+      stats: isMobile ? 15000 : 5000,        //15s mobile, 5s desktop
+      weather: 5 * 60 * 1000,                //5 minutes both
+      flashlight: isMobile ? 10000 : 5000,   //10s mobile, 5s desktop
+      recordings: isMobile ? 60000 : 30000,  //60s mobile, 30s desktop
+      pauseStatus: isMobile ? 10000 : 5000,  //10s mobile, 5s desktop
+      reactions: isMobile ? 30000 : 10000    //30s mobile, 10s desktop
+    };
+    
+    //interval references for pause/resume
+    const intervalRefs = {
+      stats: null,
+      flashlight: null,
+      recordings: null,
+      pauseStatus: null,
+      reactions: null,
+      weather: null
+    };
+    
+    //pause all intervals
+    function pauseAllIntervals() {
+      console.log('[Intervals] Pausing all intervals');
+      Object.keys(intervalRefs).forEach(key => {
+        if (intervalRefs[key]) {
+          clearInterval(intervalRefs[key]);
+          intervalRefs[key] = null;
+        }
+      });
+    }
+    
+    //resume all intervals
+    function resumeAllIntervals() {
+      console.log('[Intervals] Resuming all intervals');
+      
+      //immediate updates
+      if (isMobile) {
+        batchUpdate(); //use batch on mobile
+      } else {
+        updateStats();
+        updateWeather();
+      }
+      checkFlashlightStatus();
+      updateRecordings();
+      checkPauseStatus();
+      updateReactionsOnly();
+      
+      //set intervals
+      if (isMobile) {
+        //use batch update for stats and weather on mobile
+        intervalRefs.stats = setInterval(batchUpdate, intervals.stats);
+      } else {
+        intervalRefs.stats = setInterval(updateStats, intervals.stats);
+        intervalRefs.weather = setInterval(updateWeather, intervals.weather);
+      }
+      intervalRefs.flashlight = setInterval(checkFlashlightStatus, intervals.flashlight);
+      intervalRefs.recordings = setInterval(updateRecordings, intervals.recordings);
+      intervalRefs.pauseStatus = setInterval(checkPauseStatus, intervals.pauseStatus);
+      intervalRefs.reactions = setInterval(updateReactionsOnly, intervals.reactions);
+    }
+    
+    //visibility API handling
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        console.log('[Visibility] Page hidden, pausing updates');
+        pauseAllIntervals();
+        //close SSE connection on mobile to free up connection slot
+        if (isMobile && eventSource) {
+          eventSource.close();
+          eventSource = null;
+        }
+      } else {
+        console.log('[Visibility] Page visible, resuming updates');
+        resumeAllIntervals();
+        //reconnect SSE
+        if (isMobile) {
+          initializeSSE();
+        }
+      }
+    });
+    
+    //log mobile optimization status
+    if (isMobile) {
+      console.log('[Mobile] Mobile device detected, using optimized intervals');
+      console.log('[Mobile] User Agent:', navigator.userAgent);
+      if (isFirefoxMobile) {
+        console.log('[Mobile] Firefox Mobile detected - connection limits enforced');
+      }
+    }
+    
     //initialize
     updateTime();
     updateStats();
@@ -2429,13 +2683,8 @@
     checkPauseStatus();
     
     //periodic updates
-    setInterval(updateTime, 1000);
-    setInterval(updateStats, 5000);
-    setInterval(updateWeather, 5 * 60 * 1000); //update weather every 5 minutes
-    setInterval(checkFlashlightStatus, 5000);
-    setInterval(updateRecordings, 30000); //update recordings every 30 seconds
-    setInterval(checkPauseStatus, 5000); //check pause status every 5 seconds
-    setInterval(updateReactionsOnly, 10000); //update reactions every 10 seconds for more responsiveness
+    setInterval(updateTime, 1000); //always update time
+    resumeAllIntervals(); //start managed intervals
   </script>
   
   <!-- Import gestures module -->

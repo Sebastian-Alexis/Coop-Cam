@@ -20,6 +20,24 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// Mobile detection helper
+function isMobileDevice(userAgent) {
+  const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i;
+  return mobileRegex.test(userAgent || '');
+}
+
+// Mobile detection middleware
+app.use((req, res, next) => {
+  req.isMobile = isMobileDevice(req.headers['user-agent']);
+  
+  // Log mobile detection for debugging
+  if (req.isMobile && !req.path.startsWith('/api/stream')) {
+    console.log(`[Mobile] Request from mobile device: ${req.method} ${req.path}`);
+  }
+  
+  next();
+});
+
 // Middleware
 // Only use morgan in development mode for better performance
 if (process.env.NODE_ENV !== 'production') {
@@ -184,6 +202,20 @@ function checkRateLimit(ip) {
   return true;
 }
 
+// Connection management middleware for mobile
+// Add Connection: close header for non-streaming endpoints on mobile
+app.use((req, res, next) => {
+  // Skip for streaming endpoints or if not mobile
+  if (!req.isMobile || req.path === '/api/stream' || req.path === '/api/events/motion') {
+    return next();
+  }
+  
+  // Set Connection: close for mobile non-streaming requests
+  res.set('Connection', 'close');
+  
+  next();
+});
+
 // API Routes
 app.get('/api/stream', (req, res) => {
   // Parse FPS from query parameter
@@ -220,6 +252,14 @@ app.get('/api/stats', (req, res) => {
     response.recording = recordingService.getStats();
   }
   
+  // Mobile-specific headers
+  if (req.isMobile) {
+    res.set({
+      'Cache-Control': 'private, max-age=10', // Cache for 10 seconds on mobile
+      'X-Mobile-Optimized': 'true'
+    });
+  }
+  
   res.json(response);
 });
 
@@ -244,26 +284,29 @@ app.get('/api/events/motion', (req, res) => {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     'Connection': 'keep-alive',
-    'Access-Control-Allow-Origin': '*'
+    'Access-Control-Allow-Origin': '*',
+    // Add X-Accel-Buffering for nginx compatibility
+    'X-Accel-Buffering': 'no'
   });
   
   // Send initial connection message
-  res.write(`data: ${JSON.stringify({ type: 'connected', timestamp: Date.now() })}\n\n`);
+  res.write(`data: ${JSON.stringify({ type: 'connected', timestamp: Date.now(), isMobile: req.isMobile })}\n\n`);
   
   // Add client to set
   sseClients.add(res);
-  console.log(`[SSE] Client connected. Total clients: ${sseClients.size}`);
+  console.log(`[SSE] ${req.isMobile ? 'Mobile' : 'Desktop'} client connected. Total clients: ${sseClients.size}`);
   
-  // Send heartbeat every 30 seconds to keep connection alive
-  const heartbeatInterval = setInterval(() => {
+  // Send heartbeat - shorter interval for mobile to detect disconnections faster
+  const heartbeatInterval = req.isMobile ? 15000 : 30000; // 15s for mobile, 30s for desktop
+  const heartbeat = setInterval(() => {
     res.write(`data: ${JSON.stringify({ type: 'heartbeat', timestamp: Date.now() })}\n\n`);
-  }, 30000);
+  }, heartbeatInterval);
   
   // Handle client disconnect
   req.on('close', () => {
-    clearInterval(heartbeatInterval);
+    clearInterval(heartbeat);
     sseClients.delete(res);
-    console.log(`[SSE] Client disconnected. Total clients: ${sseClients.size}`);
+    console.log(`[SSE] ${req.isMobile ? 'Mobile' : 'Desktop'} client disconnected. Total clients: ${sseClients.size}`);
   });
 });
 
@@ -311,6 +354,14 @@ app.get('/api/flashlight/status', (req, res) => {
       }
       console.log('[Flashlight] Auto-reset state due to expired timer');
     }
+  }
+  
+  // Mobile-specific caching
+  if (req.isMobile) {
+    res.set({
+      'Cache-Control': 'private, max-age=5', // Short cache for mobile
+      'X-Mobile-Optimized': 'true'
+    });
   }
   
   res.json({
@@ -496,6 +547,14 @@ app.get('/api/weather', async (req, res) => {
   try {
     const weatherData = await fetchWeatherData(config.WEATHER_USER_AGENT);
     const cacheStatus = getCacheStatus();
+    
+    // Mobile-specific caching
+    if (req.isMobile) {
+      res.set({
+        'Cache-Control': 'private, max-age=300', // Cache for 5 minutes on mobile
+        'X-Mobile-Optimized': 'true'
+      });
+    }
     
     res.json({
       success: true,
@@ -905,6 +964,169 @@ app.post('/api/recordings/reactions/batch', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to get reactions',
+      message: error.message
+    });
+  }
+});
+
+// Batch API endpoint for mobile optimization
+// Combines multiple API calls into a single request to reduce connections
+app.post('/api/batch', express.json(), async (req, res) => {
+  try {
+    const { requests } = req.body;
+    
+    if (!requests || !Array.isArray(requests)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid request format',
+        message: 'requests array required'
+      });
+    }
+    
+    // Process each request in parallel
+    const results = await Promise.allSettled(
+      requests.map(async (request) => {
+        const { endpoint, method = 'GET', body } = request;
+        
+        // Whitelist of allowed endpoints for batching
+        const allowedEndpoints = [
+          '/api/stats',
+          '/api/weather', 
+          '/api/stream/status',
+          '/api/flashlight/status',
+          '/api/recordings/recent',
+          '/api/droidcam-status'
+        ];
+        
+        if (!allowedEndpoints.includes(endpoint)) {
+          return {
+            endpoint,
+            success: false,
+            error: 'Endpoint not allowed in batch requests'
+          };
+        }
+        
+        try {
+          // Handle different endpoints
+          let data;
+          switch (endpoint) {
+            case '/api/stats':
+              data = mjpegProxy.getStats();
+              break;
+              
+            case '/api/weather':
+              data = await weatherService.getWeather();
+              break;
+              
+            case '/api/stream/status':
+              data = {
+                isPaused: mjpegProxy.getPauseState().isPaused,
+                pauseEndTime: mjpegProxy.getPauseState().pauseEndTime,
+                remainingMs: mjpegProxy.getPauseState().pauseEndTime 
+                  ? Math.max(0, mjpegProxy.getPauseState().pauseEndTime - Date.now())
+                  : 0
+              };
+              break;
+              
+            case '/api/flashlight/status':
+              data = flashlightState;
+              break;
+              
+            case '/api/recordings/recent':
+              const dateStr = new Date().toLocaleDateString('en-US', { 
+                timeZone: 'America/Los_Angeles' 
+              });
+              const recordings = await recordingService.getRecordingsByDate(dateStr);
+              const recordingsWithThumbnails = await Promise.all(
+                recordings.map(async (recording) => {
+                  const thumbnailExists = await thumbnailService.thumbnailExists(recording.filename);
+                  return {
+                    ...recording,
+                    thumbnailUrl: thumbnailExists 
+                      ? `/api/recordings/thumbnail/${recording.filename}`
+                      : null
+                  };
+                })
+              );
+              data = { 
+                success: true, 
+                recordings: recordingsWithThumbnails,
+                date: dateStr,
+                timezone: 'America/Los_Angeles'
+              };
+              break;
+              
+            case '/api/droidcam-status':
+              const clients = mjpegProxy.getClients();
+              const clientList = Array.from(clients.entries()).map(([id, client]) => ({
+                id: client.id.substring(0, 8),
+                connectedAt: new Date(parseInt(id.split('-')[0])).toISOString(),
+                frameCount: client.frameCount || 0,
+                lastFrameTime: client.lastFrameTime ? new Date(client.lastFrameTime).toISOString() : null
+              }));
+              data = {
+                isConnected: mjpegProxy.isConnected,
+                sourceUrl: mjpegProxy.sourceUrl,
+                clients: clientList,
+                uptime: process.uptime(),
+                memory: process.memoryUsage()
+              };
+              break;
+              
+            default:
+              throw new Error('Endpoint handler not implemented');
+          }
+          
+          return {
+            endpoint,
+            success: true,
+            data
+          };
+          
+        } catch (error) {
+          console.error(`[Batch API] Error processing ${endpoint}:`, error);
+          return {
+            endpoint,
+            success: false,
+            error: error.message
+          };
+        }
+      })
+    );
+    
+    // Format results
+    const response = {
+      success: true,
+      results: results.map((result, index) => {
+        if (result.status === 'fulfilled') {
+          return result.value;
+        } else {
+          return {
+            endpoint: requests[index].endpoint,
+            success: false,
+            error: result.reason?.message || 'Unknown error'
+          };
+        }
+      })
+    };
+    
+    // Set cache header - longer for mobile since it's batched
+    if (req.isMobile) {
+      res.set({
+        'Cache-Control': 'private, max-age=10',
+        'X-Mobile-Optimized': 'true',
+        'X-Batch-Request': 'true'
+      });
+    } else {
+      res.set('Cache-Control', 'private, max-age=5');
+    }
+    res.json(response);
+    
+  } catch (error) {
+    console.error('[Batch API] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process batch request',
       message: error.message
     });
   }
