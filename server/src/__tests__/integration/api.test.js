@@ -11,7 +11,7 @@ describe('API Endpoints Integration Tests', () => {
   
   beforeAll(async () => {
     //dynamically import to ensure fresh instance
-    const appModule = await import('../../index.js')
+    const appModule = await import('../../app.js')
     app = appModule.app
     mjpegProxy = appModule.mjpegProxy
     flashlightState = appModule.flashlightState

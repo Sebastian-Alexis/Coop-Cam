@@ -26,7 +26,7 @@ describe('API Endpoints - Working Tests', () => {
     process.env.DROIDCAM_PORT = '4747'
     
     // Dynamically import to ensure fresh instance
-    const appModule = await import('../../index.js')
+    const appModule = await import('../../app.js')
     app = appModule.app
     mjpegProxy = appModule.mjpegProxy
     flashlightState = appModule.flashlightState
@@ -462,7 +462,7 @@ describe('Security Tests', () => {
   
   beforeAll(async () => {
     process.env.STREAM_PAUSE_PASSWORD = 'secure-test-password'
-    const appModule = await import('../../index.js')
+    const appModule = await import('../../app.js')
     app = appModule.app
   })
   

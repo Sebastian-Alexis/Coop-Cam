@@ -98,7 +98,7 @@ describe('Final Test Fixes', () => {
     // Clear module cache to ensure fresh imports
     vi.resetModules()
     
-    const appModule = await import('../../index.js')
+    const appModule = await import('../../app.js')
     app = appModule.app
     mjpegProxy = appModule.mjpegProxy
     weatherCache = appModule.weatherCache

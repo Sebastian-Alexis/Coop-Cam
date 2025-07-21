@@ -93,7 +93,7 @@ describe('Fixed API Tests', () => {
     process.env.NODE_ENV = 'test'
     process.env.STREAM_PAUSE_PASSWORD = 'test-password-123'
     
-    const appModule = await import('../../index.js')
+    const appModule = await import('../../app.js')
     app = appModule.app
     mjpegProxy = appModule.mjpegProxy
   })

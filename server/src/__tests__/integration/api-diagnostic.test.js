@@ -10,7 +10,7 @@ describe('Diagnostic Test', () => {
     process.env.STREAM_PAUSE_PASSWORD = 'test-password'
     
     // Import app
-    const appModule = await import('../../index.js')
+    const appModule = await import('../../app.js')
     app = appModule.app
   })
   

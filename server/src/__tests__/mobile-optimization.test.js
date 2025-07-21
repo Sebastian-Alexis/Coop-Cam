@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import request from 'supertest';
-import { app } from '../index.js';
+import { app } from '../app.js';
 
 describe('Mobile Optimization Tests', () => {
   describe('Mobile Detection', () => {
