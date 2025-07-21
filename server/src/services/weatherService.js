@@ -137,3 +137,6 @@ export function getCacheStatus() {
     expired: age > config.WEATHER_CACHE_DURATION
   };
 }
+
+//export weatherCache for testing
+export { weatherCache };

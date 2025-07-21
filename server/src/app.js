@@ -1,6 +1,7 @@
 import express from 'express';
 import morgan from 'morgan';
 import compression from 'compression';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -56,6 +57,7 @@ app.use(compression({
 }));
 
 app.use(express.json());
+app.use(cookieParser());
 
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -1201,4 +1203,6 @@ app.use((err, req, res, next) => {
 });
 
 // Export app and other modules needed for testing
-export { app as default, app, mjpegProxy, flashlightState };
+import { weatherCache } from './services/weatherService.js';
+
+export { app as default, app, mjpegProxy, flashlightState, weatherCache };

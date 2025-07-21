@@ -72,17 +72,69 @@ vi.mock('fs', () => {
   return { default: mockFs, ...mockFs }
 })
 
+// Mock fs/promises module
+vi.mock('fs/promises', () => ({
+  default: {
+    readdir: vi.fn(async () => ['2024-01-01']),
+    readFile: vi.fn(async (filePath) => {
+      if (filePath.includes('metadata.json')) {
+        return JSON.stringify({
+          startTime: '2024-01-01T12:00:00Z',
+          endTime: '2024-01-01T12:05:00Z',
+          events: []
+        })
+      }
+      if (filePath.includes('reactions.json')) {
+        return JSON.stringify({})
+      }
+      throw new Error('ENOENT: no such file or directory')
+    }),
+    stat: vi.fn(async (filePath) => {
+      if (filePath.includes('2024-01-01_12-00-00.mp4')) {
+        return {
+          size: 1024 * 1024 * 10,
+          mtime: new Date('2024-01-01T12:00:00Z'),
+          isFile: () => true,
+          isDirectory: () => false
+        }
+      }
+      if (filePath.includes('recordings/2024-01-01')) {
+        return {
+          isDirectory: () => true
+        }
+      }
+      throw new Error('ENOENT: no such file or directory')
+    }),
+    unlink: vi.fn(async () => {})
+  }
+}))
+
 // Mock thumbnailService
 vi.mock('../../services/thumbnailService.js', () => ({
-  default: {
+  default: vi.fn(() => ({
     getThumbnailPath: vi.fn((videoPath) => {
       const path = require('path')
       const dir = path.dirname(videoPath)
       const basename = path.basename(videoPath, '.mp4')
       return path.join(dir, `${basename}_thumbnail.jpg`)
     }),
-    generateThumbnail: vi.fn(async () => false)
-  }
+    generateThumbnail: vi.fn(async () => false),
+    thumbnailExists: vi.fn(async () => true),
+    getRecentRecordings: vi.fn(async () => [{
+      id: '2024-01-01_12-00-00',
+      filename: '2024-01-01_12-00-00.mp4',
+      videoPath: '/recordings/2024-01-01/2024-01-01_12-00-00.mp4',
+      thumbnailPath: '/recordings/2024-01-01/2024-01-01_12-00-00_thumb.jpg',
+      thumbnailExists: true,
+      metadata: {},
+      timestamp: '2024-01-01T12:00:00Z',
+      duration: null,
+      size: 10485760,
+      movement: 0,
+      movementIntensity: '0%'
+    }]),
+    getTodaysRecordings: vi.fn(async () => [])
+  }))
 }))
 
 describe('Fixed API Tests', () => {

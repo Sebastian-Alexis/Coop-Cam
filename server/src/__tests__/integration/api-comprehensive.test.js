@@ -9,26 +9,72 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+// Mock express response.sendFile
+vi.mock('express', async () => {
+  const actual = await vi.importActual('express')
+  const express = actual.default
+  
+  // Override response.sendFile
+  const originalResponse = express.response
+  express.response.sendFile = vi.fn(function(filePath, options, callback) {
+    // Handle callback if provided
+    const cb = callback || (typeof options === 'function' ? options : () => {})
+    
+    // Mock successful file sends
+    if (filePath.includes('_thumbnail.jpg') || filePath.includes('_thumb.jpg')) {
+      this.status(200)
+      this.set('Content-Type', 'image/jpeg')
+      this.end()
+      cb()
+    } else if (filePath.includes('.mp4')) {
+      // For video files, check if range header exists
+      if (options && options.headers && options.headers['Content-Range']) {
+        this.status(206) // Partial content
+      } else {
+        this.status(200)
+      }
+      this.set('Content-Type', 'video/mp4')
+      this.end()
+      cb()
+    } else if (filePath.includes('.html')) {
+      this.status(200)
+      this.set('Content-Type', 'text/html')
+      this.end('<html><body>Mock HTML</body></html>')
+      cb()
+    } else {
+      const err = new Error('ENOENT: no such file or directory')
+      err.code = 'ENOENT'
+      err.statusCode = 404
+      cb(err)
+    }
+  })
+  
+  return { default: express, ...actual }
+})
+
 // Mock fs module for recording endpoints
 vi.mock('fs', () => {
   const { Readable } = require('stream')
-  const path = require('path')
+  
+  const existsSyncMock = vi.fn((filePath) => {
+    // Mock recording directory structure
+    if (filePath.includes('recordings')) {
+      if (filePath.includes('2024-01-01_12-00-00.mp4')) return true
+      if (filePath.includes('2024-01-01_12-00-00_thumbnail.jpg')) return true
+      if (filePath.includes('2024-01-01_12-00-00_thumb.jpg')) return true
+      if (filePath.includes('2024-01-01/2024-01-01_12-00-00.mp4')) return true
+      if (filePath.includes('2024-01-01/2024-01-01_12-00-00_thumbnail.jpg')) return true
+      if (filePath.includes('2024-01-01/2024-01-01_12-00-00_thumb.jpg')) return true
+      if (filePath.includes('2024-01-01_99-99-99.mp4')) return false
+      if (filePath.includes('recordings/2024-01-01')) return true
+    }
+    return false
+  })
   
   const mockFs = {
-    existsSync: vi.fn((filePath) => {
-      // Mock recording directory structure
-      if (filePath.includes('recordings')) {
-        if (filePath.includes('2024-01-01_12-00-00.mp4')) return true
-        if (filePath.includes('2024-01-01_12-00-00_thumbnail.jpg')) return true
-        if (filePath.includes('2024-01-01/2024-01-01_12-00-00.mp4')) return true
-        if (filePath.includes('2024-01-01/2024-01-01_12-00-00_thumbnail.jpg')) return true
-        if (filePath.includes('2024-01-01_99-99-99.mp4')) return false
-        if (filePath.includes('recordings/2024-01-01')) return true
-      }
-      return false
-    }),
+    existsSync: existsSyncMock,
     
-    createReadStream: vi.fn((filePath) => {
+    createReadStream: vi.fn((filePath, options) => {
       const stream = new Readable()
       
       if (filePath.includes('thumbnail.jpg')) {
@@ -36,14 +82,28 @@ vi.mock('fs', () => {
         stream.push(Buffer.from([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46]))
         stream.push('fake jpeg data')
         stream.push(Buffer.from([0xFF, 0xD9]))
+      } else if (filePath.includes('.mp4')) {
+        // Mock video data - simulate streaming with chunks
+        const videoData = Buffer.from('fake video data for streaming')
+        const start = options?.start || 0
+        const end = options?.end || videoData.length - 1
+        const chunk = videoData.slice(start, end + 1)
+        stream.push(chunk)
       } else {
-        // Mock video data
-        stream.push('fake video data')
+        // Other files
+        stream.push('fake file data')
       }
       stream.push(null)
       
       // Add stream methods that might be used
       stream.headers = {}
+      stream.pipe = vi.fn((res) => {
+        // Simulate piping to response
+        if (!res.headersSent) {
+          res.end()
+        }
+        return res
+      })
       return stream
     }),
     
@@ -51,6 +111,14 @@ vi.mock('fs', () => {
       if (filePath.includes('2024-01-01_12-00-00.mp4')) {
         return { 
           size: 1024 * 1024 * 10, // 10MB
+          mtime: new Date('2024-01-01T12:00:00Z'),
+          isFile: () => true,
+          isDirectory: () => false
+        }
+      }
+      if (filePath.includes('2024-01-01_12-00-00_thumbnail.jpg') || filePath.includes('2024-01-01_12-00-00_thumb.jpg')) {
+        return { 
+          size: 1024 * 50, // 50KB
           mtime: new Date('2024-01-01T12:00:00Z'),
           isFile: () => true,
           isDirectory: () => false
@@ -108,6 +176,74 @@ vi.mock('fs', () => {
   return { default: mockFs, ...mockFs }
 })
 
+// Mock fs/promises module
+vi.mock('fs/promises', () => ({
+  default: {
+    readdir: vi.fn(async () => ['2024-01-01']),
+    readFile: vi.fn(async (filePath) => {
+      if (filePath.includes('metadata.json')) {
+        return JSON.stringify({
+          startTime: '2024-01-01T12:00:00Z',
+          endTime: '2024-01-01T12:05:00Z',
+          events: []
+        })
+      }
+      if (filePath.includes('reactions.json')) {
+        return JSON.stringify({})
+      }
+      throw new Error('ENOENT: no such file or directory')
+    }),
+    stat: vi.fn(async (filePath) => {
+      if (filePath.includes('2024-01-01_12-00-00.mp4')) {
+        return {
+          size: 1024 * 1024 * 10,
+          mtime: new Date('2024-01-01T12:00:00Z'),
+          isFile: () => true,
+          isDirectory: () => false
+        }
+      }
+      if (filePath.includes('recordings/2024-01-01')) {
+        return {
+          isDirectory: () => true
+        }
+      }
+      throw new Error('ENOENT: no such file or directory')
+    }),
+    unlink: vi.fn(async () => {})
+  },
+  readdir: vi.fn(async () => ['2024-01-01']),
+  readFile: vi.fn(async (filePath) => {
+    if (filePath.includes('metadata.json')) {
+      return JSON.stringify({
+        startTime: '2024-01-01T12:00:00Z',
+        endTime: '2024-01-01T12:05:00Z',
+        events: []
+      })
+    }
+    if (filePath.includes('reactions.json')) {
+      return JSON.stringify({})
+    }
+    throw new Error('ENOENT: no such file or directory')
+  }),
+  stat: vi.fn(async (filePath) => {
+    if (filePath.includes('2024-01-01_12-00-00.mp4')) {
+      return {
+        size: 1024 * 1024 * 10,
+        mtime: new Date('2024-01-01T12:00:00Z'),
+        isFile: () => true,
+        isDirectory: () => false
+      }
+    }
+    if (filePath.includes('recordings/2024-01-01')) {
+      return {
+        isDirectory: () => true
+      }
+    }
+    throw new Error('ENOENT: no such file or directory')
+  }),
+  unlink: vi.fn(async () => {})
+}))
+
 // Mock recordingService  
 vi.mock('../../services/recordingService.js', () => ({
   recordingService: {
@@ -133,7 +269,7 @@ vi.mock('../../services/recordingService.js', () => ({
 
 // Mock thumbnailService
 vi.mock('../../services/thumbnailService.js', () => ({
-  default: {
+  default: vi.fn(() => ({
     getThumbnailPath: vi.fn((videoPath) => {
       const path = require('path')
       const dir = path.dirname(videoPath)
@@ -143,8 +279,23 @@ vi.mock('../../services/thumbnailService.js', () => ({
     generateThumbnail: vi.fn(async () => true),
     checkThumbnail: vi.fn(async (videoPath) => {
       return videoPath.includes('2024-01-01_12-00-00.mp4')
-    })
-  }
+    }),
+    thumbnailExists: vi.fn(async () => true),
+    getRecentRecordings: vi.fn(async () => [{
+      id: '2024-01-01_12-00-00',
+      filename: '2024-01-01_12-00-00.mp4',
+      videoPath: '/recordings/2024-01-01/2024-01-01_12-00-00.mp4',
+      thumbnailPath: '/recordings/2024-01-01/2024-01-01_12-00-00_thumb.jpg',
+      thumbnailExists: true,
+      metadata: {},
+      timestamp: '2024-01-01T12:00:00Z',
+      duration: null,
+      size: 10485760,
+      movement: 0,
+      movementIntensity: '0%'
+    }]),
+    getTodaysRecordings: vi.fn(async () => [])
+  }))
 }))
 
 describe('Comprehensive API Endpoints Integration Tests', () => {
@@ -683,7 +834,7 @@ describe('Comprehensive API Endpoints Integration Tests', () => {
       
       it('should prevent path traversal attacks', async () => {
         const response = await request(app)
-          .get('/api/recordings/thumbnail/../../etc/passwd')
+          .get('/api/recordings/thumbnail/..%2F..%2Fetc%2Fpasswd')
           .expect(400)
         
         expect(response.body).toMatchObject({
@@ -969,8 +1120,14 @@ describe('Comprehensive API Endpoints Integration Tests', () => {
           .post('/api/recordings/2024-01-01_12-00-00.mp4/reactions')
           .set('Cookie', 'viewerId=<script>alert("XSS")</script>')
           .send({ reaction: 'hearts' })
-          .expect(200)
         
+        // Log the response to see what's happening
+        if (response.status !== 200) {
+          console.log('Response status:', response.status)
+          console.log('Response body:', response.body)
+        }
+        
+        expect(response.status).toBe(200)
         // The reaction should be stored but with escaped user ID
         expect(response.body.success).toBe(true)
       })

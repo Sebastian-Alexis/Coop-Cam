@@ -101,6 +101,43 @@ vi.mock('fs', () => {
   return { default: mockFs, ...mockFs }
 })
 
+// Mock fs/promises module
+vi.mock('fs/promises', () => ({
+  default: {
+    readdir: vi.fn(async () => ['2024-01-01']),
+    readFile: vi.fn(async (filePath) => {
+      if (filePath.includes('metadata.json')) {
+        return JSON.stringify({
+          startTime: '2024-01-01T12:00:00Z',
+          endTime: '2024-01-01T12:05:00Z',
+          events: []
+        })
+      }
+      if (filePath.includes('reactions.json')) {
+        return JSON.stringify({})
+      }
+      throw new Error('ENOENT: no such file or directory')
+    }),
+    stat: vi.fn(async (filePath) => {
+      if (filePath.includes('2024-01-01_12-00-00.mp4')) {
+        return {
+          size: 1024 * 1024 * 10,
+          mtime: new Date('2024-01-01T12:00:00Z'),
+          isFile: () => true,
+          isDirectory: () => false
+        }
+      }
+      if (filePath.includes('recordings/2024-01-01')) {
+        return {
+          isDirectory: () => true
+        }
+      }
+      throw new Error('ENOENT: no such file or directory')
+    }),
+    unlink: vi.fn(async () => {})
+  }
+}))
+
 // Mock recordingService  
 vi.mock('../../services/recordingService.js', () => ({
   recordingService: {
@@ -126,7 +163,7 @@ vi.mock('../../services/recordingService.js', () => ({
 
 // Mock thumbnailService
 vi.mock('../../services/thumbnailService.js', () => ({
-  default: {
+  default: vi.fn(() => ({
     getThumbnailPath: vi.fn((videoPath) => {
       const dir = path.dirname(videoPath)
       const basename = path.basename(videoPath, '.mp4')
@@ -135,8 +172,10 @@ vi.mock('../../services/thumbnailService.js', () => ({
     generateThumbnail: vi.fn(async () => true),
     checkThumbnail: vi.fn(async (videoPath) => {
       return videoPath.includes('2024-01-01_12-00-00.mp4')
-    })
-  }
+    }),
+    thumbnailExists: vi.fn(async () => true),
+    getTodaysRecordings: vi.fn(async () => [])
+  }))
 }))
 
 describe('Recording Endpoints with Proper Mocking', () => {
