@@ -2,6 +2,7 @@ import http from 'http';
 import { EventEmitter } from 'events';
 import sharp from 'sharp';
 import { config } from './config.js';
+import { getFrameBufferManager } from './services/frameBufferManager.js';
 
 class MjpegProxy extends EventEmitter {
   constructor(sourceUrl, options = {}) {
@@ -19,6 +20,9 @@ class MjpegProxy extends EventEmitter {
     this.lastBroadcastTime = 0;
     this.serverFpsLimit = 30; // Server-side FPS limit
     this.serverFrameInterval = 1000 / this.serverFpsLimit; // 33ms for 30 FPS
+    
+    //frame buffer manager for optimized memory handling
+    this.frameBufferManager = getFrameBufferManager();
     
     //pause state management
     this.pauseState = {
@@ -525,6 +529,53 @@ class MjpegProxy extends EventEmitter {
     ]);
     
     this.broadcastToClients(frameData);
+  }
+  
+  //optimized broadcast using sequential writes without Buffer.concat
+  broadcastOptimized(frame) {
+    const now = Date.now();
+    const deadClients = [];
+    const boundary = this.frameBufferManager.getBoundaryBuffers();
+    
+    for (const [clientId, clientData] of this.clients) {
+      //support both test mock structure and real response object
+      const res = clientData.res || clientData;
+      
+      //check if client connection is still active
+      if (res.destroyed || res.writableEnded) {
+        deadClients.push(clientId);
+        continue;
+      }
+      
+      //rate limiting per client
+      const clientRateLimit = this.frameRateLimiter.get(clientId) || {};
+      const lastSentTime = clientRateLimit.lastSentTime || 0;
+      const timeSinceLastSent = now - lastSentTime;
+      const minInterval = clientRateLimit.minInterval || 0;
+      
+      if (timeSinceLastSent < minInterval) {
+        continue; //skip this frame for rate-limited client
+      }
+      
+      //write frame with boundaries using sequential writes (no concat)
+      try {
+        res.write(boundary.start);
+        res.write(frame);
+        res.write(boundary.end);
+      } catch (error) {
+        console.error(`[Proxy] Error writing to client ${clientId}:`, error.message);
+        deadClients.push(clientId);
+      }
+      
+      //update rate limiter
+      clientRateLimit.lastSentTime = now;
+      this.frameRateLimiter.set(clientId, clientRateLimit);
+    }
+    
+    //clean up dead clients
+    deadClients.forEach(clientId => {
+      this.removeClient(clientId);
+    });
   }
   
   //broadcast frame data to all clients

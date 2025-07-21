@@ -1,6 +1,6 @@
 //circular buffer implementation for pre-recording frames
 class CircularBufferService {
-  constructor(duration = 3, fps = 30) {
+  constructor(duration = 3, fps = 30, copyFrames = false) {
     this.duration = duration;
     this.fps = fps;
     this.bufferSize = duration * fps; //total frames to store
@@ -8,8 +8,9 @@ class CircularBufferService {
     this.writeIndex = 0;
     this.wrapped = false;
     this.totalFramesWritten = 0;
+    this.copyFrames = copyFrames; //whether to copy frames or store references
     
-    console.log(`[CircularBuffer] Initialized with size ${this.bufferSize} (${duration}s @ ${fps}fps)`);
+    console.log(`[CircularBuffer] Initialized with size ${this.bufferSize} (${duration}s @ ${fps}fps), copyFrames: ${copyFrames}`);
   }
 
   //add a frame to the buffer
@@ -19,14 +20,15 @@ class CircularBufferService {
       return;
     }
 
-    //create a deep copy to prevent corruption
-    const frameCopy = Buffer.from(frame);
+    //store reference or copy based on configuration
+    const frameData = this.copyFrames ? Buffer.from(frame) : frame;
     
     //store frame with metadata
     this.buffer[this.writeIndex] = {
-      data: frameCopy,
+      data: frameData,
       timestamp: timestamp,
-      index: this.totalFramesWritten
+      index: this.totalFramesWritten,
+      isReference: !this.copyFrames
     };
 
     //advance write pointer
@@ -78,6 +80,28 @@ class CircularBufferService {
     console.log('[CircularBuffer] Buffer cleared');
   }
 
+  //convert reference frames to copies (useful before saving to disk)
+  convertToCopies() {
+    const frames = this.getFrames();
+    const copiedFrames = [];
+    
+    for (const frame of frames) {
+      if (frame.isReference) {
+        //create a deep copy of reference frame
+        copiedFrames.push({
+          ...frame,
+          data: Buffer.from(frame.data),
+          isReference: false
+        });
+      } else {
+        //already a copy
+        copiedFrames.push(frame);
+      }
+    }
+    
+    return copiedFrames;
+  }
+  
   //get buffer statistics
   getStats() {
     const frames = this.getFrames();
@@ -93,7 +117,9 @@ class CircularBufferService {
       newestTimestamp: newestFrame ? newestFrame.timestamp : null,
       durationMs: oldestFrame && newestFrame ? 
         newestFrame.timestamp - oldestFrame.timestamp : 0,
-      memoryUsageBytes: frames.reduce((sum, frame) => sum + frame.data.length, 0)
+      memoryUsageBytes: frames.reduce((sum, frame) => sum + frame.data.length, 0),
+      usingReferences: !this.copyFrames,
+      memoryMode: this.copyFrames ? 'copy' : 'reference'
     };
   }
 }
