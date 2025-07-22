@@ -138,178 +138,21 @@ app.use(createConnectionManagementMiddleware());
 
 // ======== INITIALIZE ROUTES ===================================================
 // Initialize routes using controller/route pattern
+const weatherService = { fetchWeatherData, getCacheStatus };
 initializeRoutes(app, {
   flashlightState,
   mjpegProxy,
-  recordingService
+  recordingService,
+  weatherService,
+  sseService,
+  motionEventsService,
+  authService,
+  config
 });
 
-// API Routes
-app.get('/api/stream', (req, res) => {
-  // Parse FPS from query parameter
-  const fps = req.query.fps ? parseInt(req.query.fps) : null;
-  const clientId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}${fps ? `-fps${fps}` : ''}`;
-  
-  // Set TCP_NODELAY for low-latency streaming
-  if (req.socket && req.socket.setNoDelay) {
-    req.socket.setNoDelay(true);
-  }
-  
-  // Set socket timeout to prevent hanging connections
-  if (req.socket && req.socket.setTimeout) {
-    req.socket.setTimeout(0); // Disable timeout for streaming
-  }
-  
-  mjpegProxy.addClient(clientId, res, fps);
-});
+// Health, flashlight, weather, motion, and stream routes moved to controllers/routes pattern above
 
-// Health and stats routes moved to controllers/routes pattern above
 
-// SSE endpoint for motion events
-app.get('/api/events/motion', (req, res) => {
-  sseService.addClient(req, res);
-});
-
-// Get motion event history
-app.get('/api/motion/history', (req, res) => {
-  const limit = parseInt(req.query.limit) || 50;
-  const offset = parseInt(req.query.offset) || 0;
-  const since = req.query.since ? parseInt(req.query.since) : null;
-  
-  let events;
-  
-  // Use service method based on query parameters
-  if (since) {
-    events = motionEventsService.getEventsSince(since);
-  } else {
-    events = motionEventsService.getRecentEvents(limit, offset);
-  }
-  
-  // Get total count for pagination info
-  const totalEvents = motionEventsService.getCurrentSize();
-  
-  res.json({
-    success: true,
-    events: events,
-    total: totalEvents,
-    offset: offset,
-    limit: limit,
-    stats: motionEventsService.getStats()
-  });
-});
-
-// Flashlight routes moved to controllers/routes pattern above
-
-// Weather API endpoint
-app.get('/api/weather', async (req, res) => {
-  try {
-    const weatherData = await fetchWeatherData(config.WEATHER_USER_AGENT);
-    const cacheStatus = getCacheStatus();
-    
-    // Mobile-specific caching
-    if (req.isMobile) {
-      res.set({
-        'Cache-Control': 'private, max-age=300', // Cache for 5 minutes on mobile
-        'X-Mobile-Optimized': 'true'
-      });
-    }
-    
-    res.json({
-      success: true,
-      data: weatherData,
-      cache: cacheStatus
-    });
-  } catch (error) {
-    console.error('[Weather] API error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch weather data',
-      message: error.message
-    });
-  }
-});
-
-// Stream pause endpoint
-app.post('/api/stream/pause', express.json(), async (req, res) => {
-  const clientIp = req.ip;
-  
-  const { password } = req.body;
-  
-  // Validate password
-  if (!password) {
-    return res.status(400).json({
-      success: false,
-      message: 'Password is required'
-    });
-  }
-
-  // Check rate limit after validating password but before processing
-  if (authService.isRateLimited(clientIp)) {
-    console.log(`[Stream Pause] Rate limit exceeded for IP: ${clientIp}`);
-    return res.status(429).json({
-      success: false,
-      message: 'Too many attempts. Please try again in a minute.'
-    });
-  }
-  
-  // Record attempt for rate limiting (counts all attempts)
-  authService.recordAttempt(clientIp);
-  
-  // Verify password using timing-safe comparison
-  if (!authService.verifyPassword(password, config.STREAM_PAUSE_PASSWORD)) {
-    console.log(`[Stream Pause] Invalid password attempt from IP: ${clientIp}`);
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid password'
-    });
-  }
-  
-  try {
-    // Pause the stream
-    const paused = await mjpegProxy.pauseStream();
-    
-    if (paused) {
-      console.log(`[Stream Pause] Stream paused by IP: ${clientIp} at ${new Date().toISOString()}`);
-      res.json({
-        success: true,
-        message: 'Stream paused for 5 minutes',
-        pauseDuration: 300 // seconds
-      });
-    } else {
-      res.status(400).json({
-        success: false,
-        message: 'Stream is already paused'
-      });
-    }
-  } catch (error) {
-    console.error('[Stream Pause] Error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to pause stream'
-    });
-  }
-});
-
-// Stream status endpoint
-app.get('/api/stream/status', (req, res) => {
-  try {
-    const pauseStatus = mjpegProxy.getPauseStatus();
-    const proxyStats = mjpegProxy.getStats();
-    
-    res.json({
-      success: true,
-      ...pauseStatus,
-      clientCount: proxyStats.clientCount,
-      isConnected: proxyStats.isConnected
-    });
-  } catch (error) {
-    console.error('[Stream Status] Error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to get stream status'
-    });
-  }
-});
 
 // DroidCam status endpoint for diagnostics
 app.get('/api/droidcam-status', async (req, res) => {
@@ -676,7 +519,24 @@ app.post('/api/batch', express.json(), async (req, res) => {
               break;
               
             case '/api/weather':
-              data = await weatherService.getWeather();
+              const weatherData = await weatherService.fetchWeatherData(config.WEATHER_USER_AGENT);
+              const cacheStatus = weatherService.getCacheStatus();
+              
+              //check if weather service returned error data
+              if (weatherData.error) {
+                data = {
+                  success: false,
+                  error: 'Weather service unavailable',
+                  data: weatherData,
+                  cache: cacheStatus
+                };
+              } else {
+                data = {
+                  success: true,
+                  data: weatherData,
+                  cache: cacheStatus
+                };
+              }
               break;
               
             case '/api/stream/status':
