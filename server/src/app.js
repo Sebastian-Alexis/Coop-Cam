@@ -147,6 +147,10 @@ initializeRoutes(app, {
   sseService,
   motionEventsService,
   authService,
+  reactionService,
+  thumbnailService,
+  REACTION_TYPES,
+  CHICKEN_TONES,
   config
 });
 
@@ -154,64 +158,7 @@ initializeRoutes(app, {
 
 
 
-// DroidCam status endpoint for diagnostics
-app.get('/api/droidcam-status', async (req, res) => {
-  try {
-    const stats = mjpegProxy.getStats();
-    const droidcamUrl = `http://${config.DROIDCAM_IP}:${config.DROIDCAM_PORT}`;
-    
-    // Try to check if DroidCam is reachable
-    let droidcamReachable = false;
-    let droidcamError = null;
-    
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
-      
-      const response = await fetch(`${droidcamUrl}/`, { 
-        signal: controller.signal,
-        method: 'GET'
-      });
-      
-      clearTimeout(timeout);
-      droidcamReachable = response.ok;
-      
-      if (!response.ok) {
-        droidcamError = `HTTP ${response.status}`;
-      }
-    } catch (error) {
-      droidcamError = error.message;
-    }
-    
-    res.json({
-      droidcam: {
-        ip: config.DROIDCAM_IP,
-        port: config.DROIDCAM_PORT,
-        url: droidcamUrl,
-        videoUrl: DROIDCAM_URL,
-        reachable: droidcamReachable,
-        error: droidcamError
-      },
-      proxy: {
-        connected: stats.isConnected,
-        viewerCount: stats.clientCount,
-        clientIds: Array.from(mjpegProxy.clients.keys()),
-        lastFrameTime: mjpegProxy.lastFrameTime || null
-      },
-      server: {
-        uptime: process.uptime(),
-        nodeVersion: process.version,
-        environment: process.env.NODE_ENV || 'development'
-      }
-    });
-  } catch (error) {
-    console.error('[DroidCam Status] Error:', error);
-    res.status(500).json({ 
-      error: 'Failed to get status',
-      message: error.message 
-    });
-  }
-});
+// Health, flashlight, weather, motion, stream, and droidcam routes moved to controllers/routes pattern above
 
 // Recording API endpoints
 // Get recent recordings with metadata
@@ -354,124 +301,7 @@ app.get('/api/recordings/video/:filename', async (req, res) => {
   }
 });
 
-// Reaction API endpoints
-// Get reactions for a recording
-app.get('/api/recordings/:filename/reactions', async (req, res) => {
-  try {
-    const filename = req.params.filename;
-    const userId = req.cookies?.viewerId || req.headers['x-viewer-id'];
-    
-    const reactions = await reactionService.getReactions(filename, userId);
-    
-    res.json({
-      success: true,
-      ...reactions,
-      reactionTypes: REACTION_TYPES,
-      chickenTones: CHICKEN_TONES,
-      chickenTones: CHICKEN_TONES
-    });
-  } catch (error) {
-    console.error('[Reactions API] Error getting reactions:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get reactions',
-      message: error.message
-    });
-  }
-});
-
-// Add or update a reaction
-app.post('/api/recordings/:filename/reactions', async (req, res) => {
-  try {
-    const filename = req.params.filename;
-    const { reaction, tone } = req.body;
-    const userId = req.cookies?.viewerId || req.headers['x-viewer-id'];
-    
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        error: 'User identification required',
-        message: 'Please enable cookies or provide viewer ID'
-      });
-    }
-    
-    if (!reaction || !REACTION_TYPES[reaction]) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid reaction type',
-        validTypes: Object.keys(REACTION_TYPES)
-      });
-    }
-    
-    const result = await reactionService.addReaction(filename, userId, reaction, tone);
-    res.json(result);
-  } catch (error) {
-    console.error('[Reactions API] Error adding reaction:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to add reaction',
-      message: error.message
-    });
-  }
-});
-
-// Remove a reaction
-app.delete('/api/recordings/:filename/reactions', async (req, res) => {
-  try {
-    const filename = req.params.filename;
-    const userId = req.cookies?.viewerId || req.headers['x-viewer-id'];
-    const { reactionType, tone } = req.body; // Optional: specific reaction and/or tone to remove
-    
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        error: 'User identification required'
-      });
-    }
-    
-    const result = await reactionService.removeReaction(filename, userId, reactionType, tone);
-    res.json(result);
-  } catch (error) {
-    console.error('[Reactions API] Error removing reaction:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to remove reaction',
-      message: error.message
-    });
-  }
-});
-
-// Get reactions for multiple recordings (batch)
-app.post('/api/recordings/reactions/batch', async (req, res) => {
-  try {
-    const { filenames } = req.body;
-    const userId = req.cookies?.viewerId || req.headers['x-viewer-id'];
-    
-    if (!filenames || !Array.isArray(filenames)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid request',
-        message: 'filenames array required'
-      });
-    }
-    
-    const reactions = await reactionService.getMultipleReactions(filenames, userId);
-    
-    res.json({
-      success: true,
-      reactions,
-      reactionTypes: REACTION_TYPES,
-      chickenTones: CHICKEN_TONES
-    });
-  } catch (error) {
-    console.error('[Reactions API] Error getting batch reactions:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get reactions',
-      message: error.message
-    });
-  }
-});
+// Reaction API endpoints moved to controllers/routes pattern above
 
 // Batch API endpoint for mobile optimization
 // Combines multiple API calls into a single request to reduce connections
@@ -653,57 +483,7 @@ app.post('/api/batch', express.json(), async (req, res) => {
   }
 });
 
-// Serve static HTML pages with cache headers
-const serveStaticHTML = (filename) => (req, res) => {
-  const filePath = path.join(__dirname, 'views', filename);
-  
-  // Set cache headers for static assets
-  res.set({
-    'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
-    'X-Content-Type-Options': 'nosniff'
-  });
-  
-  res.sendFile(filePath, (err) => {
-    if (err) {
-      console.error(`Error serving ${filename}:`, err);
-      res.status(404).send('Page not found');
-    }
-  });
-};
-
-app.get('/', serveStaticHTML('index.html'));
-app.get('/coop', serveStaticHTML('coop.html'));
-app.get('/about', serveStaticHTML('about.html'));
-
-// Serve mobile CSS
-app.get('/mobile.css', (req, res) => {
-  const filePath = path.join(__dirname, 'views', 'mobile.css');
-  res.set({
-    'Content-Type': 'text/css',
-    'Cache-Control': 'public, max-age=3600'
-  });
-  res.sendFile(filePath, (err) => {
-    if (err) {
-      console.error('Error serving mobile.css:', err);
-      res.status(404).send('File not found');
-    }
-  });
-});
-
-// Serve gestures JS module
-app.get('/gestures.js', (req, res) => {
-  const filePath = path.join(__dirname, 'views', 'gestures.js');
-  res.set({
-    'Content-Type': 'application/javascript',
-    'Cache-Control': 'public, max-age=3600'
-  });
-  res.sendFile(filePath, (err) => {
-    if (err) {
-      console.error('Error serving gestures.js:', err);
-      res.status(404).send('File not found');
-    }
-  });
-});
+// Health, flashlight, weather, motion, stream, droidcam, static, and reaction routes moved to controllers/routes pattern above
 
 // Catch-all route for undefined paths
 app.use(create404Handler());
