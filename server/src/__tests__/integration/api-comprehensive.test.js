@@ -9,6 +9,41 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+//mock MotionDetectionService with EventEmitter interface for app.js integration tests
+vi.mock('../../services/motionDetectionService.js', () => {
+  return {
+    default: vi.fn().mockImplementation(() => {
+      const mockEventEmitter = {
+        //EventEmitter methods
+        on: vi.fn(),
+        emit: vi.fn(),
+        off: vi.fn(),
+        removeListener: vi.fn(),
+        removeAllListeners: vi.fn(),
+        setMaxListeners: vi.fn(),
+        getMaxListeners: vi.fn(),
+        listeners: vi.fn(() => []),
+        listenerCount: vi.fn(() => 0),
+        
+        //service-specific methods
+        start: vi.fn(),
+        stop: vi.fn(),
+        pause: vi.fn(),
+        resume: vi.fn(),
+        isRunning: vi.fn(() => false),
+        getStats: vi.fn(() => ({
+          isEnabled: false,
+          processedFrames: 0,
+          motionEvents: 0,
+          averageProcessingTime: 0
+        }))
+      }
+      
+      return mockEventEmitter
+    })
+  }
+})
+
 // Mock express response.sendFile
 vi.mock('express', async () => {
   const actual = await vi.importActual('express')

@@ -1,12 +1,19 @@
 import express from 'express';
 import morgan from 'morgan';
-import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { EventEmitter } from 'events';
 import crypto from 'crypto';
+import { 
+  createMobileDetectionMiddleware,
+  createCompressionMiddleware,
+  createStaticFilesMiddleware,
+  createConnectionManagementMiddleware,
+  create404Handler,
+  createGlobalErrorHandler
+} from './middleware/index.js';
 import MjpegProxy from './mjpegProxy.js';
 import { config, DROIDCAM_URL } from './config.js';
 import { fetchWeatherData, getCacheStatus } from './services/weatherService.js';
@@ -15,29 +22,21 @@ import RecordingService from './services/recordingService.js';
 import ThumbnailService from './services/thumbnailService.js';
 import ReactionService, { REACTION_TYPES, CHICKEN_TONES } from './services/reactionService.js';
 import flashlightState from './state/flashlightState.js';
+import sseService from './state/sseService.js';
+import authService from './state/authState.js';
+import motionEventsService from './state/motionEvents.js';
+import { initializeRoutes } from './routes/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Mobile detection helper
-function isMobileDevice(userAgent) {
-  const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i;
-  return mobileRegex.test(userAgent || '');
-}
+// Trust proxy for accurate IP detection in tests and production
+app.set('trust proxy', true);
 
 // Mobile detection middleware
-app.use((req, res, next) => {
-  req.isMobile = isMobileDevice(req.headers['user-agent']);
-  
-  // Log mobile detection for debugging
-  if (req.isMobile && !req.path.startsWith('/api/stream')) {
-    console.log(`[Mobile] Request from mobile device: ${req.method} ${req.path}`);
-  }
-  
-  next();
-});
+app.use(createMobileDetectionMiddleware());
 
 // Middleware
 // Only use morgan in development mode for better performance
@@ -46,27 +45,13 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Enable compression for all routes except the stream
-app.use(compression({
-  filter: (req, res) => {
-    // Don't compress the MJPEG stream
-    if (req.path === '/api/stream') {
-      return false;
-    }
-    // Use default compression filter for other routes
-    return compression.filter(req, res);
-  }
-}));
+app.use(createCompressionMiddleware());
 
 app.use(express.json());
 app.use(cookieParser());
 
-// Serve static files from public directory
-app.use(express.static(path.join(__dirname, '..', 'public')));
-
-// Serve art assets
-app.use('/art', express.static(path.join(__dirname, '..', '..', 'art')));
-// Serve reactions assets
-app.use('/art/reactions', express.static(path.join(__dirname, '..', '..', 'reactions')));
+// Serve static files
+createStaticFilesMiddleware(app);
 
 // Create MJPEG proxy instance
 const mjpegProxy = new MjpegProxy(DROIDCAM_URL, {
@@ -83,6 +68,10 @@ console.log('[Server] Motion detection service created');
 // Connect flashlight state service to motion detection
 flashlightState.setMotionDetectionService(motionDetectionService);
 console.log('[Server] Flashlight state service connected to motion detection');
+
+// Connect motion events service to motion detection
+motionEventsService.startListening(motionDetectionService);
+console.log('[Server] Motion events service connected to motion detection');
 
 // Create recording service
 let recordingService = null;
@@ -104,16 +93,11 @@ console.log('[Server] Thumbnail service created');
 const reactionService = new ReactionService(config);
 console.log('[Server] Reaction service created');
 
-// SSE client management
-const sseClients = new Set();
-let motionEventHistory = [];
-const MAX_MOTION_HISTORY = 100;
 
-// Listen for motion events
+// Listen for motion events to broadcast to SSE clients
 eventEmitter.on('motion', (data) => {
   console.log('[Motion] Event received:', data);
   
-  // Add to history (circular buffer)
   const motionEvent = {
     type: 'motion',
     timestamp: Date.now(),
@@ -123,16 +107,8 @@ eventEmitter.on('motion', (data) => {
     recordingStarted: false
   };
   
-  motionEventHistory.push(motionEvent);
-  if (motionEventHistory.length > MAX_MOTION_HISTORY) {
-    motionEventHistory.shift();
-  }
-  
   // Broadcast to all SSE clients
-  const sseMessage = `data: ${JSON.stringify(motionEvent)}\n\n`;
-  sseClients.forEach(client => {
-    client.write(sseMessage);
-  });
+  sseService.broadcast(motionEvent);
 });
 
 // Listen for recording events
@@ -156,61 +132,16 @@ eventEmitter.on('recording-failed', (data) => {
 });
 
 
-// Rate limiting for password attempts
-const passwordAttempts = new Map();
-const MAX_PASSWORD_ATTEMPTS = 3;
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-
-// Timing-safe password comparison
-function verifyPassword(inputPassword) {
-  const storedPassword = config.STREAM_PAUSE_PASSWORD;
-  
-  if (!inputPassword || !storedPassword) {
-    return false;
-  }
-  
-  const inputBuffer = Buffer.from(inputPassword);
-  const storedBuffer = Buffer.from(storedPassword);
-  
-  // Length must match for timing-safe comparison
-  if (inputBuffer.length !== storedBuffer.length) {
-    return false;
-  }
-  
-  return crypto.timingSafeEqual(inputBuffer, storedBuffer);
-}
-
-// Check rate limit for IP
-function checkRateLimit(ip) {
-  const now = Date.now();
-  const attempts = passwordAttempts.get(ip) || [];
-  
-  // Remove old attempts outside window
-  const recentAttempts = attempts.filter(time => now - time < RATE_LIMIT_WINDOW);
-  
-  if (recentAttempts.length >= MAX_PASSWORD_ATTEMPTS) {
-    return false;
-  }
-  
-  // Update attempts
-  recentAttempts.push(now);
-  passwordAttempts.set(ip, recentAttempts);
-  
-  return true;
-}
 
 // Connection management middleware for mobile
-// Add Connection: close header for non-streaming endpoints on mobile
-app.use((req, res, next) => {
-  // Skip for streaming endpoints or if not mobile
-  if (!req.isMobile || req.path === '/api/stream' || req.path === '/api/events/motion') {
-    return next();
-  }
-  
-  // Set Connection: close for mobile non-streaming requests
-  res.set('Connection', 'close');
-  
-  next();
+app.use(createConnectionManagementMiddleware());
+
+// ======== INITIALIZE ROUTES ===================================================
+// Initialize routes using controller/route pattern
+initializeRoutes(app, {
+  flashlightState,
+  mjpegProxy,
+  recordingService
 });
 
 // API Routes
@@ -232,79 +163,11 @@ app.get('/api/stream', (req, res) => {
   mjpegProxy.addClient(clientId, res, fps);
 });
 
-app.get('/api/stats', (req, res) => {
-  const stats = mjpegProxy.getStats();
-  const response = {
-    isConnected: stats.isConnected,
-    clientCount: stats.clientCount,
-    sourceUrl: stats.sourceUrl,
-    hasLastFrame: stats.hasLastFrame,
-    serverTime: new Date().toISOString(),
-    frameCount: mjpegProxy.frameCount || 0,
-    interpolation: stats.interpolation
-  };
-  
-  // Add recording stats if enabled
-  if (recordingService) {
-    response.recording = recordingService.getStats();
-  }
-  
-  // Mobile-specific headers
-  if (req.isMobile) {
-    res.set({
-      'Cache-Control': 'private, max-age=10', // Cache for 10 seconds on mobile
-      'X-Mobile-Optimized': 'true'
-    });
-  }
-  
-  res.json(response);
-});
-
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    uptime: process.uptime(),
-    memory: process.memoryUsage(),
-    proxy: mjpegProxy.getStats()
-  });
-});
-
-app.get('/api/interpolation-stats', (req, res) => {
-  const stats = mjpegProxy.getStats();
-  res.json(stats.interpolation);
-});
+// Health and stats routes moved to controllers/routes pattern above
 
 // SSE endpoint for motion events
 app.get('/api/events/motion', (req, res) => {
-  // Set SSE headers
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'Access-Control-Allow-Origin': '*',
-    // Add X-Accel-Buffering for nginx compatibility
-    'X-Accel-Buffering': 'no'
-  });
-  
-  // Send initial connection message
-  res.write(`data: ${JSON.stringify({ type: 'connected', timestamp: Date.now(), isMobile: req.isMobile })}\n\n`);
-  
-  // Add client to set
-  sseClients.add(res);
-  console.log(`[SSE] ${req.isMobile ? 'Mobile' : 'Desktop'} client connected. Total clients: ${sseClients.size}`);
-  
-  // Send heartbeat - shorter interval for mobile to detect disconnections faster
-  const heartbeatInterval = req.isMobile ? 15000 : 30000; // 15s for mobile, 30s for desktop
-  const heartbeat = setInterval(() => {
-    res.write(`data: ${JSON.stringify({ type: 'heartbeat', timestamp: Date.now() })}\n\n`);
-  }, heartbeatInterval);
-  
-  // Handle client disconnect
-  req.on('close', () => {
-    clearInterval(heartbeat);
-    sseClients.delete(res);
-    console.log(`[SSE] ${req.isMobile ? 'Mobile' : 'Desktop'} client disconnected. Total clients: ${sseClients.size}`);
-  });
+  sseService.addClient(req, res);
 });
 
 // Get motion event history
@@ -313,72 +176,29 @@ app.get('/api/motion/history', (req, res) => {
   const offset = parseInt(req.query.offset) || 0;
   const since = req.query.since ? parseInt(req.query.since) : null;
   
-  let filteredEvents = motionEventHistory;
+  let events;
   
-  // Filter by timestamp if provided
+  // Use service method based on query parameters
   if (since) {
-    filteredEvents = filteredEvents.filter(event => event.timestamp > since);
+    events = motionEventsService.getEventsSince(since);
+  } else {
+    events = motionEventsService.getRecentEvents(limit, offset);
   }
   
-  // Apply pagination
-  const paginatedEvents = filteredEvents.slice(offset, offset + limit);
+  // Get total count for pagination info
+  const totalEvents = motionEventsService.getCurrentSize();
   
   res.json({
     success: true,
-    events: paginatedEvents,
-    total: filteredEvents.length,
+    events: events,
+    total: totalEvents,
     offset: offset,
-    limit: limit
+    limit: limit,
+    stats: motionEventsService.getStats()
   });
 });
 
-// Get flashlight status
-app.get('/api/flashlight/status', (req, res) => {
-  const status = flashlightState.getStatus();
-  
-  // Mobile-specific caching
-  if (req.isMobile) {
-    res.set({
-      'Cache-Control': 'private, max-age=5', // Short cache for mobile
-      'X-Mobile-Optimized': 'true'
-    });
-  }
-  
-  res.json(status);
-});
-
-// Flashlight control endpoint - now only turns on
-app.put('/api/flashlight/on', async (req, res) => {
-  const result = await flashlightState.turnOn();
-  
-  if (result.success) {
-    res.json(result);
-  } else {
-    res.status(500).json(result);
-  }
-});
-
-// Flashlight control endpoint - turn off
-app.put('/api/flashlight/off', async (req, res) => {
-  const result = await flashlightState.turnOff();
-  
-  if (result.success) {
-    res.json(result);
-  } else {
-    res.status(500).json(result);
-  }
-});
-
-// Keep old endpoint for backwards compatibility (redirects to new endpoint)
-app.put('/api/flashlight', async (req, res) => {
-  const result = await flashlightState.turnOn();
-  
-  if (result.success) {
-    res.json(result);
-  } else {
-    res.status(500).json(result);
-  }
-});
+// Flashlight routes moved to controllers/routes pattern above
 
 // Weather API endpoint
 app.get('/api/weather', async (req, res) => {
@@ -411,16 +231,7 @@ app.get('/api/weather', async (req, res) => {
 
 // Stream pause endpoint
 app.post('/api/stream/pause', express.json(), async (req, res) => {
-  const clientIp = req.ip || req.connection.remoteAddress;
-  
-  // Check rate limit
-  if (!checkRateLimit(clientIp)) {
-    console.log(`[Stream Pause] Rate limit exceeded for IP: ${clientIp}`);
-    return res.status(429).json({
-      success: false,
-      message: 'Too many attempts. Please try again in a minute.'
-    });
-  }
+  const clientIp = req.ip;
   
   const { password } = req.body;
   
@@ -431,9 +242,21 @@ app.post('/api/stream/pause', express.json(), async (req, res) => {
       message: 'Password is required'
     });
   }
+
+  // Check rate limit after validating password but before processing
+  if (authService.isRateLimited(clientIp)) {
+    console.log(`[Stream Pause] Rate limit exceeded for IP: ${clientIp}`);
+    return res.status(429).json({
+      success: false,
+      message: 'Too many attempts. Please try again in a minute.'
+    });
+  }
+  
+  // Record attempt for rate limiting (counts all attempts)
+  authService.recordAttempt(clientIp);
   
   // Verify password using timing-safe comparison
-  if (!verifyPassword(password)) {
+  if (!authService.verifyPassword(password, config.STREAM_PAUSE_PASSWORD)) {
     console.log(`[Stream Pause] Invalid password attempt from IP: ${clientIp}`);
     return res.status(401).json({
       success: false,
@@ -1023,21 +846,10 @@ app.get('/gestures.js', (req, res) => {
 });
 
 // Catch-all route for undefined paths
-app.get('*', (req, res, next) => {
-  // Skip if it's an API route or a static file
-  if (req.path.startsWith('/api/') || req.path.includes('.')) {
-    return next();
-  }
-  
-  // Return 404 for undefined routes
-  res.status(404).send('Page not found');
-});
+app.use(create404Handler());
 
 // Error handling
-app.use((err, req, res, next) => {
-  console.error('Server error:', err);
-  res.status(500).json({ error: 'Internal server error' });
-});
+app.use(createGlobalErrorHandler());
 
 // Export app and other modules needed for testing
 import { weatherCache } from './services/weatherService.js';
