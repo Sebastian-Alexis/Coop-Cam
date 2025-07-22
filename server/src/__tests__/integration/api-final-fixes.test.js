@@ -119,7 +119,9 @@ vi.mock('../../services/thumbnailService.js', () => ({
       const basename = path.basename(videoPath, '.mp4')
       return path.join(dir, `${basename}_thumbnail.jpg`)
     }),
-    generateThumbnail: vi.fn(async () => false),
+    generateThumbnail: vi.fn(async () => {
+      throw new Error('Thumbnail generation failed')
+    }),
     thumbnailExists: vi.fn(async () => true),
     getRecentRecordings: vi.fn(async () => [{
       id: '2024-01-01_12-00-00',
@@ -197,7 +199,7 @@ describe('Final Test Fixes', () => {
         .get('/api/recordings/thumbnail/2024-12-31_23-59-59.mp4')
       
       expect(response.status).toBe(404)
-      expect(response.body.error).toBe('Thumbnail not found')
+      expect(response.body.error).toBe('Thumbnail not found and could not be generated')
     })
   })
   
