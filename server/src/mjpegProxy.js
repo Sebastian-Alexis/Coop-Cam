@@ -8,6 +8,8 @@ class MjpegProxy extends EventEmitter {
   constructor(sourceUrl, options = {}) {
     super();
     this.sourceUrl = sourceUrl;
+    this.sourceId = options.sourceId || 'default'; // Identifier for multi-stream support
+    this.sourceName = options.sourceName || 'Default Stream'; // Human-readable name
     this.clients = new Map();
     this.sourceConnection = null;
     this.boundary = null;
@@ -63,7 +65,7 @@ class MjpegProxy extends EventEmitter {
       this.reconnectTimeout = null;
     }
 
-    console.log(`[Proxy] Connecting to MJPEG source: ${this.sourceUrl}`);
+    console.log(`[Proxy ${this.sourceId}] Connecting to MJPEG source: ${this.sourceUrl}`);
     
     const request = http.get(this.sourceUrl, (response) => {
       // Set TCP_NODELAY for low latency
@@ -101,7 +103,7 @@ class MjpegProxy extends EventEmitter {
         this.boundary = contentType.split('boundary=')[1];
       }
       
-      console.log(`[Proxy] Connected to source. Content-Type: ${contentType}`);
+      console.log(`[Proxy ${this.sourceId}] Connected to source. Content-Type: ${contentType}`);
       this.emit('connected');
 
       // Handle incoming data with optimized buffer management

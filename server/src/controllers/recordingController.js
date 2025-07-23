@@ -20,7 +20,8 @@ const _validateAndConstructPath = (filename, config) => {
   const resolvedVideoPath = path.resolve(videoPath);
 
   if (!resolvedVideoPath.startsWith(recordingsDir)) {
-    return { error: 'Forbidden: Path traversal attempt detected', status: 403 };
+    //return 404 for path traversal attempts to match original behavior and tests
+    return { error: 'Video not found', status: 404 };
   }
 
   return { videoPath, dateDir };

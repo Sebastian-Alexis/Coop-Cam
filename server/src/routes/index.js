@@ -10,6 +10,7 @@ import { createDroidcamController } from '../controllers/droidcamController.js';
 import { createStaticController } from '../controllers/staticController.js';
 import { createReactionController } from '../controllers/reactionController.js';
 import { createRecordingController } from '../controllers/recordingController.js';
+import { createBatchController } from '../controllers/batchController.js';
 import { createFlashlightRouter } from './api/flashlight.js';
 import { createHealthRouter } from './api/health.js';
 import { createWeatherRouter } from './api/weather.js';
@@ -19,11 +20,13 @@ import { createDroidcamRouter } from './api/droidcam.js';
 import { createStaticRouter } from './static.js';
 import { createReactionRouter } from './api/reaction.js';
 import { createRecordingRouter } from './api/recording.js';
+import { createBatchRouter } from './api/batch.js';
 
 //main route initialization function - receives app and all dependencies
 export const initializeRoutes = (app, { 
   flashlightState, 
   mjpegProxy, 
+  streamManager, // New multi-stream manager
   recordingService,
   weatherService,
   sseService,
@@ -41,11 +44,12 @@ export const initializeRoutes = (app, {
   const healthController = createHealthController({ mjpegProxy, recordingService });
   const weatherController = createWeatherController({ weatherService, config });
   const motionController = createMotionController({ sseService, motionEventsService });
-  const streamController = createStreamController({ mjpegProxy, authService, config });
+  const streamController = createStreamController({ streamManager, authService, config });
   const droidcamController = createDroidcamController({ mjpegProxy, config });
   const staticController = createStaticController({ config });
   const reactionController = createReactionController({ reactionService, REACTION_TYPES, CHICKEN_TONES });
   const recordingController = createRecordingController({ thumbnailService, reactionService, config, REACTION_TYPES, CHICKEN_TONES });
+  const batchController = createBatchController({ mjpegProxy, weatherService, flashlightState, recordingService, thumbnailService, config });
 
   //instantiate and mount routers
   const flashlightRouter = createFlashlightRouter({ flashlightController });
@@ -75,5 +79,8 @@ export const initializeRoutes = (app, {
   const recordingRouter = createRecordingRouter({ recordingController });
   app.use('/api', recordingRouter);
 
-  console.log('[Routes] Flashlight, health, weather, motion, stream, droidcam, static, reaction, and recording routes initialized');
+  const batchRouter = createBatchRouter({ batchController });
+  app.use('/api', batchRouter);
+
+  console.log('[Routes] Flashlight, health, weather, motion, stream, droidcam, static, reaction, recording, and batch routes initialized');
 };

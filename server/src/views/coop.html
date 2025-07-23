@@ -7,6 +7,7 @@
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/js/requestQueue.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Jersey+25&display=swap" rel="stylesheet">
   <link href="/mobile.css" rel="stylesheet" type="text/css" />
   <style>
     /* Custom caramellatte theme */
@@ -470,6 +471,141 @@
       line-height: 1;
       display: block;
     }
+
+    /* Retro Bottom Bar Styles */
+    :root {
+      --retro-bg: #FFD6A7;
+      --retro-border: #8C3F27;
+      --retro-text: #8C3F27;
+      --retro-shadow: rgba(55, 10, 0, 0.48);
+    }
+
+    .retro-bottom-bar {
+      display: grid;
+      grid-template-columns: 30.6% 23.3% 19.9% 26.2%;
+      height: 71px;
+      font-family: 'Jersey 25', serif;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      border-top: 1px solid var(--retro-border);
+    }
+
+    .retro-section {
+      background: var(--retro-bg);
+      border: 4px solid var(--retro-border);
+      border-right: 2px solid var(--retro-border);
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 0 15px;
+      color: var(--retro-text);
+      position: relative;
+      box-sizing: border-box;
+    }
+
+    .retro-section:first-child {
+      border-left: 4px solid var(--retro-border);
+      border-bottom-left-radius: 25px;
+      box-shadow: inset 0px 12px 0px -1px var(--retro-shadow);
+    }
+
+    .retro-section:last-child {
+      border-right: 4px solid var(--retro-border);
+      border-bottom-right-radius: 25px;
+    }
+
+    .retro-section:not(:last-child) {
+      border-right: 2px solid var(--retro-border);
+    }
+
+    .retro-text-large {
+      font-size: 42px;
+      line-height: 1em;
+      font-family: 'Jersey 25', serif;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+    }
+
+    .retro-text-small {
+      font-size: 18px;
+      line-height: 1em;
+      font-family: 'Jersey 25', serif;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+    }
+
+    .retro-section-interactive {
+      cursor: pointer;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    .retro-section-interactive:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .retro-section-weather {
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .retro-section-weather .weather-icon {
+      width: 48px;
+      height: 48px;
+    }
+
+    .retro-section-weather .weather-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .retro-section-weather .weather-desc-right {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    /* Mobile responsive design */
+    @media (max-width: 768px) {
+      .retro-bottom-bar {
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(4, 71px);
+        height: auto;
+        gap: 0;
+      }
+
+      .retro-section {
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      .retro-section:first-child {
+        border-bottom: 2px solid var(--retro-border);
+        box-shadow: inset 0px 12px 0px -1px var(--retro-shadow);
+      }
+
+      .retro-section:last-child {
+        border-bottom-left-radius: 25px;
+        border-bottom-right-radius: 25px;
+        border-top: 2px solid var(--retro-border);
+      }
+
+      .retro-section:not(:first-child):not(:last-child) {
+        border-top: 2px solid var(--retro-border);
+        border-bottom: 2px solid var(--retro-border);
+      }
+
+      .retro-text-large {
+        font-size: 32px;
+      }
+
+      .retro-text-small {
+        font-size: 16px;
+      }
+    }
     
   </style>
 </head>
@@ -532,7 +668,9 @@
       <!-- Video Section -->
       <div class="container-padding max-w-7xl mx-auto w-full py-4 md:py-6">
         <div class="flex justify-center">
-          <div id="videoContainer" class="video-container relative w-full bg-base-200 rounded-2xl overflow-hidden shadow-lg border border-base-300 stream-loading">
+          <!-- Unified Video/Bottom Bar Container -->
+          <div class="unified-container w-full bg-base-200 rounded-2xl overflow-hidden shadow-lg border border-base-300">
+            <div id="videoContainer" class="video-container relative w-full">
             <!-- Loading Spinner -->
             <div id="streamLoader" class="absolute inset-0 flex items-center justify-center bg-base-200">
               <div class="flex flex-col items-center gap-4">
@@ -563,93 +701,53 @@
               </svg>
             </button>
           </div>
-        </div>
-        <div class="flex justify-center mt-4 gap-4">
-          <a href="/about" class="btn btn-primary btn-sm gap-2 hover-lift touch-target">
-            <span class="mobile-hide">Learn More About Our Chickens</span>
-            <span class="mobile-only">About</span>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-            </svg>
-          </a>
-          <button id="pauseBtn" onclick="pauseStream()" class="btn btn-primary btn-sm gap-2 hover-lift touch-target">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
-            </svg>
-            <span id="pauseBtnText">Pause Stream</span>
-          </button>
-        </div>
-      </div>
-      
-      <!-- Control Panel -->
-      <div class="bg-base-200 border-t border-base-300">
-        <div class="container-padding max-w-7xl mx-auto py-4 md:py-6">
-          <!-- Mobile Collapsible Header -->
-          <div class="collapsible-header mobile-only-flex" onclick="toggleControlPanel()">
-            <h3 class="text-lg font-semibold">Controls & Info</h3>
-            <svg class="collapsible-icon w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-          <!-- Primary Controls -->
-          <div id="controlPanelContent" class="collapsible-section grid grid-cols-1 md:grid-cols-3 gap-4 mb-4" style="max-height: 1000px;">
-            <!-- Flashlight - Primary Action -->
-            <div class="md:col-span-1">
-              <button 
-                id="flashlightBtn"
-                onclick="toggleFlashlight()"
-                class="bg-base-100 rounded-xl p-4 hover-lift h-full w-full text-left transition-all touch-target-lg"
-                aria-label="Toggle coop flashlight"
-              >
-                <div class="flex items-center justify-center gap-2 font-semibold text-base">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
-                  </svg>
-                  <span id="flashlightBtnText">Turn On Flashlight</span>
-                </div>
-                <div id="timerContainer" class="mt-2 text-center">
-                  <span class="text-xs opacity-60">Turns off in</span>
-                  <span id="timerText" class="font-digital text-sm opacity-60 timer-transition ml-1">5:00</span>
-                </div>
-              </button>
-            </div>
             
-            <!-- Info Grid -->
-            <div class="md:col-span-2 grid grid-cols-2 md:grid-cols-3 gap-4 mobile-grid-2">
-              <!-- Stream Status -->
-              <div class="bg-base-100 rounded-xl p-4 hover-lift">
-                <div class="text-xs uppercase tracking-wider text-base-content/60 mb-1">Stream</div>
-                <div class="flex items-center gap-2">
-                  <span class="relative flex h-3 w-3">
-                    <span class="pulse absolute inline-flex h-full w-full rounded-full bg-success"></span>
-                    <span class="relative inline-flex rounded-full h-3 w-3 bg-success"></span>
-                  </span>
-                  <span class="font-semibold">Live</span>
+            <!-- Retro Bottom Bar Layout -->
+            <div class="retro-bottom-bar w-full">
+            <!-- Section 1: Coop Enclosure -->
+            <div class="retro-section">
+              <span class="retro-text-large">Coop Enclosure</span>
+            </div>
+
+            <!-- Section 2: Inside Coop (Static Decorative Text) -->
+            <div class="retro-section">
+              <span class="retro-text-large">Inside Coop</span>
+            </div>
+
+            <!-- Section 3: Time Display -->
+            <div class="retro-section">
+              <span class="retro-text-large" id="currentTime">11:47:23 pst</span>
+            </div>
+
+            <!-- Section 4: Weather -->
+            <div class="retro-section retro-section-weather">
+              <!-- Icon + Temperature (Left) -->
+              <div class="weather-left">
+                <div class="weather-icon" id="weatherIcon">
+                  <!-- Default cloud icon (will be replaced with dynamic weather icon) -->
+                  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M38 18C37.7 12.6 33.2 8 28 8C24.5 8 21.5 10.1 20 13.2C18.9 12.4 17.5 12 16 12C12.7 12 10 14.7 10 18C6.7 18 4 20.7 4 24C4 27.3 6.7 30 10 30H36C39.3 30 42 27.3 42 24C42 21.8 40.9 19.8 39.2 18.6L38 18Z" 
+                          stroke="#8C3F27" stroke-width="4" fill="none"/>
+                  </svg>
                 </div>
-                <div class="text-sm text-base-content/70 mt-1">
-                  <span id="viewerCount">0</span> <span id="viewerText">viewers</span>
-                </div>
+                <div class="retro-text-large" id="weatherTemp">98°</div>
               </div>
               
-              <!-- Time -->
-              <div class="bg-base-100 rounded-xl p-4 hover-lift">
-                <div class="text-xs uppercase tracking-wider text-base-content/60 mb-1">Time (PST)</div>
-                <div id="currentTime" class="font-digital text-2xl font-semibold">--:--:--</div>
-                <div id="localTime" class="text-xs text-base-content/60 mt-1">Your time: --:--:--</div>
+              <!-- Weather Description (Right) -->
+              <div class="weather-desc-right">
+                <div class="retro-text-small" id="weatherDesc">Patchy Drizzle then Partly Sunny</div>
               </div>
-              
-              <!-- Weather -->
-              <div class="bg-base-100 rounded-xl p-4 hover-lift">
-                <div class="text-xs uppercase tracking-wider text-base-content/60 mb-1">Weather</div>
-                <div id="weatherContent" class="flex items-center gap-2">
-                  <!-- Loading skeleton -->
-                  <div class="w-8 h-8 bg-base-300 rounded-full animate-pulse"></div>
-                  <div>
-                    <div class="w-12 h-5 bg-base-300 rounded animate-pulse mb-1"></div>
-                    <div class="w-16 h-4 bg-base-300 rounded animate-pulse"></div>
-                  </div>
+
+              <!-- Hidden weather content for API integration -->
+              <div id="weatherContent" class="sr-only">
+                <!-- Loading skeleton -->
+                <div class="w-8 h-8 bg-base-300 rounded-full animate-pulse"></div>
+                <div>
+                  <div class="w-12 h-5 bg-base-300 rounded animate-pulse mb-1"></div>
+                  <div class="w-16 h-4 bg-base-300 rounded animate-pulse"></div>
                 </div>
               </div>
+            </div>
             </div>
           </div>
         </div>
@@ -1120,18 +1218,16 @@
 
     //update UI based on flashlight state
     function updateFlashlightUI(isOn, remainingSeconds) {
-      const btn = document.getElementById('flashlightBtn');
-      const btnText = document.getElementById('flashlightBtnText');
+      //flashlight UI elements no longer exist (Inside Coop is now static text)
+      //preserve timer functionality for potential future use
       const timerText = document.getElementById('timerText');
       
-      if (isOn) {
-        btn.classList.add('flashlight-on');
-        btn.disabled = true;
-        btnText.textContent = 'Flashlight On';
-        
-        //update timer styling
-        timerText.classList.remove('opacity-60');
-        timerText.classList.add('text-success', 'font-bold');
+      if (isOn) {        
+        //update timer for screen readers (if timer element exists)
+        if (timerText) {
+          timerText.classList.remove('opacity-60');
+          timerText.classList.add('text-success', 'font-bold');
+        }
         
         //start smooth countdown
         startCountdown(remainingSeconds);
@@ -1142,14 +1238,12 @@
           countdownInterval = null;
         }
         
-        btn.classList.remove('flashlight-on');
-        btn.disabled = false;
-        btnText.textContent = 'Turn On Flashlight';
-        
-        //reset timer styling
-        timerText.classList.add('opacity-60');
-        timerText.classList.remove('text-success', 'font-bold');
-        timerText.textContent = '5:00';
+        //reset timer for screen readers (if timer element exists)
+        if (timerText) {
+          timerText.classList.add('opacity-60');
+          timerText.classList.remove('text-success', 'font-bold');
+          timerText.textContent = '5:00';
+        }
       }
     }
 
@@ -1190,12 +1284,9 @@
 
     //toggle flashlight
     async function toggleFlashlight() {
-      const btn = document.getElementById('flashlightBtn');
-      const btnText = document.getElementById('flashlightBtnText');
-      
-      //show loading state
-      btn.disabled = true;
-      btnText.textContent = 'Turning on...';
+      //flashlight UI elements no longer exist (Inside Coop is now static text)
+      //preserve functionality but skip UI updates since button is removed
+      console.log('toggleFlashlight called but UI elements no longer exist');
       
       try {
         const response = await fetch('/api/flashlight/on', {
@@ -1208,20 +1299,15 @@
         const data = await response.json();
         
         if (response.ok && data.success) {
-          //update UI with server state
+          //update UI with server state (will handle missing elements gracefully)
           updateFlashlightUI(data.isOn, data.remainingSeconds);
           console.log('Flashlight turned on successfully');
         } else {
-          //reset on error
-          btn.disabled = false;
-          btnText.textContent = 'Turn On Flashlight';
           console.error('Failed to turn on flashlight:', data.message || 'Unknown error');
           alert(`Failed to turn on flashlight: ${data.message || 'Unknown error'}`);
         }
       } catch (error) {
         console.error('Failed to toggle flashlight:', error);
-        btn.disabled = false;
-        btnText.textContent = 'Turn On Flashlight';
         alert(`Network error: ${error.message}`);
       }
     }
@@ -1238,25 +1324,30 @@
         hour12: false,
         timeZone: 'America/Los_Angeles'
       });
-      document.getElementById('currentTime').textContent = pstStr;
       
-      //get user's local time
-      const localStr = now.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        second: '2-digit',
-        hour12: false
-      });
+      //update retro display with "HH:MM:SS pst" format
+      document.getElementById('currentTime').textContent = `${pstStr} pst`;
       
-      //get user's timezone abbreviation
-      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const tzAbbr = now.toLocaleTimeString('en-US', {
-        timeZoneName: 'short',
-        timeZone: userTimezone
-      }).split(' ').pop();
-      
-      //update main time display only
-      document.getElementById('localTime').textContent = `Your time: ${localStr} ${tzAbbr}`;
+      //update legacy localTime element if it exists (for backward compatibility)
+      const localTimeElement = document.getElementById('localTime');
+      if (localTimeElement) {
+        //get user's local time
+        const localStr = now.toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit',
+          hour12: false
+        });
+        
+        //get user's timezone abbreviation
+        const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const tzAbbr = now.toLocaleTimeString('en-US', {
+          timeZoneName: 'short',
+          timeZone: userTimezone
+        }).split(' ').pop();
+        
+        localTimeElement.textContent = `Your time: ${localStr} ${tzAbbr}`;
+      }
     }
 
     //handle stats update from batch or individual call
@@ -1326,67 +1417,91 @@
         
         if (result.success && result.data) {
           const weather = result.data;
+          const weatherIcon = document.getElementById('weatherIcon');
+          const weatherTemp = document.getElementById('weatherTemp');
+          const weatherDesc = document.getElementById('weatherDesc');
           const weatherContent = document.getElementById('weatherContent');
           
-          //determine weather icon based on conditions
-          let iconSvg = '';
-          let iconColor = 'text-warning';
+          //update retro display elements
+          weatherTemp.textContent = `${weather.temperature}°`;
+          weatherDesc.textContent = weather.conditions;
           
+          //determine weather icon based on conditions (styled for retro design)
+          let iconSvg = '';
           const conditions = weather.conditions.toLowerCase();
           
           if (conditions.includes('sunny') || conditions.includes('clear')) {
-            //sun icon
-            iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 ${iconColor}">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+            //sun icon with retro styling
+            iconSvg = `<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="24" cy="24" r="8" stroke="#8C3F27" stroke-width="4" fill="none"/>
+              <path d="M24 4V8M24 40V44M44 24H40M8 24H4M36.4 11.6L33.6 14.4M14.4 33.6L11.6 36.4M36.4 36.4L33.6 33.6M14.4 14.4L11.6 11.6" stroke="#8C3F27" stroke-width="4" stroke-linecap="round"/>
             </svg>`;
-          } else if (conditions.includes('cloud')) {
-            //cloud icon
-            iconColor = 'text-base-content/60';
-            iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 ${iconColor}">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z" />
-            </svg>`;
-          } else if (conditions.includes('rain') || conditions.includes('shower')) {
-            //rain icon
-            iconColor = 'text-info';
-            iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 ${iconColor}">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 19.5v1.5m3-3v3m3-4.5v4.5" />
+          } else if (conditions.includes('rain') || conditions.includes('shower') || conditions.includes('drizzle')) {
+            //rain icon with retro styling
+            iconSvg = `<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M38 18C37.7 12.6 33.2 8 28 8C24.5 8 21.5 10.1 20 13.2C18.9 12.4 17.5 12 16 12C12.7 12 10 14.7 10 18C6.7 18 4 20.7 4 24C4 27.3 6.7 30 10 30H36C39.3 30 42 27.3 42 24C42 21.8 40.9 19.8 39.2 18.6L38 18Z" 
+                    stroke="#8C3F27" stroke-width="4" fill="none"/>
+              <path d="M16 32V38M20 34V40M24 32V38M28 34V40M32 32V38" stroke="#8C3F27" stroke-width="4" stroke-linecap="round"/>
             </svg>`;
           } else if (conditions.includes('storm')) {
-            //storm icon
-            iconColor = 'text-warning';
-            iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 ${iconColor}">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+            //storm icon with retro styling
+            iconSvg = `<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M38 18C37.7 12.6 33.2 8 28 8C24.5 8 21.5 10.1 20 13.2C18.9 12.4 17.5 12 16 12C12.7 12 10 14.7 10 18C6.7 18 4 20.7 4 24C4 27.3 6.7 30 10 30H36C39.3 30 42 27.3 42 24C42 21.8 40.9 19.8 39.2 18.6L38 18Z" 
+                    stroke="#8C3F27" stroke-width="4" fill="none"/>
+              <path d="M20 30L16 42L20 36H28L24 44" stroke="#8C3F27" stroke-width="4" stroke-linejoin="round" fill="none"/>
             </svg>`;
           } else {
-            //default sun icon for unknown conditions
-            iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 ${iconColor}">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+            //default cloud icon with retro styling (matches Figma design)
+            iconSvg = `<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M38 18C37.7 12.6 33.2 8 28 8C24.5 8 21.5 10.1 20 13.2C18.9 12.4 17.5 12 16 12C12.7 12 10 14.7 10 18C6.7 18 4 20.7 4 24C4 27.3 6.7 30 10 30H36C39.3 30 42 27.3 42 24C42 21.8 40.9 19.8 39.2 18.6L38 18Z" 
+                    stroke="#8C3F27" stroke-width="4" fill="none"/>
             </svg>`;
           }
           
-          weatherContent.innerHTML = `
-            ${iconSvg}
-            <div>
-              <div class="font-semibold">${weather.temperature}°${weather.temperatureUnit}</div>
-              <div class="text-sm text-base-content/70">${weather.conditions}</div>
-            </div>
-          `;
+          //update weather icon
+          weatherIcon.innerHTML = iconSvg;
+          
+          //update legacy weatherContent for backward compatibility (hidden)
+          if (weatherContent) {
+            weatherContent.innerHTML = `
+              <div>
+                <div class="font-semibold">${weather.temperature}°${weather.temperatureUnit}</div>
+                <div class="text-sm text-base-content/70">${weather.conditions}</div>
+              </div>
+            `;
+          }
           
           //add title attribute for detailed forecast on hover
-          weatherContent.parentElement.title = weather.detailedForecast;
+          const weatherSection = weatherIcon.closest('.retro-section');
+          if (weatherSection) {
+            weatherSection.title = weather.detailedForecast;
+          }
         } else {
           //show error state
+          const weatherIcon = document.getElementById('weatherIcon');
+          const weatherTemp = document.getElementById('weatherTemp');
+          const weatherDesc = document.getElementById('weatherDesc');
           const weatherContent = document.getElementById('weatherContent');
-          weatherContent.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-base-content/30">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-            </svg>
-            <div>
-              <div class="font-semibold">--°F</div>
-              <div class="text-sm text-base-content/70">Unavailable</div>
-            </div>
-          `;
+          
+          //update retro display elements
+          weatherTemp.textContent = '--°';
+          weatherDesc.textContent = 'Unavailable';
+          
+          //error icon with retro styling
+          weatherIcon.innerHTML = `<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="24" cy="24" r="20" stroke="#8C3F27" stroke-width="4" fill="none"/>
+            <path d="M24 16V24M24 32H24.01" stroke="#8C3F27" stroke-width="4" stroke-linecap="round"/>
+          </svg>`;
+          
+          //update legacy weatherContent for backward compatibility
+          if (weatherContent) {
+            weatherContent.innerHTML = `
+              <div>
+                <div class="font-semibold">--°F</div>
+                <div class="text-sm text-base-content/70">Unavailable</div>
+              </div>
+            `;
+          }
         }
     }
     

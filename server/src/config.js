@@ -11,6 +11,54 @@ if (process.env.NODE_ENV !== 'test') {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+//parse stream sources configuration
+function parseStreamSources() {
+  //new: support for structured stream sources
+  if (process.env.STREAM_SOURCES) {
+    try {
+      const sources = JSON.parse(process.env.STREAM_SOURCES);
+      if (!Array.isArray(sources) || sources.length === 0) {
+        throw new Error('STREAM_SOURCES must be a non-empty JSON array.');
+      }
+      //ensure there's exactly one default
+      const defaultSources = sources.filter(s => s.isDefault);
+      if (defaultSources.length !== 1) {
+        throw new Error('Exactly one stream source must be marked with "isDefault": true.');
+      }
+      //validate source structure
+      for (const source of sources) {
+        if (!source.id || !source.name || !source.url) {
+          throw new Error('Each stream source must have id, name, and url properties.');
+        }
+      }
+      console.log('[Config] Using STREAM_SOURCES configuration with', sources.length, 'sources');
+      return sources;
+    } catch (e) {
+      console.error('[Config] Error parsing STREAM_SOURCES:', e.message);
+      if (process.env.NODE_ENV !== 'test') {
+        process.exit(1);
+      }
+    }
+  }
+
+  //legacy fallback for backward compatibility (or when DROIDCAM_IP/PORT provided)
+  const droidcamIp = process.env.DROIDCAM_IP || '192.168.1.67';
+  const droidcamPort = process.env.DROIDCAM_PORT || '4747';
+  
+  if (process.env.DROIDCAM_IP && process.env.DROIDCAM_PORT) {
+    console.log('[Config] Using legacy DROIDCAM_IP/PORT configuration. Consider migrating to STREAM_SOURCES.');
+  } else if (process.env.NODE_ENV !== 'test') {
+    console.log('[Config] No stream sources configured, using defaults. Consider setting STREAM_SOURCES in .env file.');
+  }
+  
+  return [{
+    id: 'default',
+    name: 'Default DroidCam',
+    url: `http://${droidcamIp}:${droidcamPort}/video`,
+    isDefault: true,
+  }];
+}
+
 //debug: verify environment variables are loaded
 console.log('[Config] Loading configuration...');
 console.log('[Config] MOTION_DETECTION_ENABLED:', process.env.MOTION_DETECTION_ENABLED);
@@ -18,8 +66,14 @@ console.log('[Config] RECORDING_ENABLED:', process.env.RECORDING_ENABLED);
 console.log('[Config] NODE_ENV:', process.env.NODE_ENV);
 console.log('[Config] Recording output directory will be:', path.resolve(__dirname, '..', process.env.RECORDING_OUTPUT_DIR || './recordings'));
 
+//get stream sources configuration
+const streamSources = parseStreamSources();
+
 export const config = {
-  // DroidCam configuration
+  // Stream sources configuration (new multi-stream support)
+  streamSources,
+  
+  // Legacy DroidCam configuration (maintained for backward compatibility)
   DROIDCAM_IP: process.env.DROIDCAM_IP || '192.168.1.67',
   DROIDCAM_PORT: process.env.DROIDCAM_PORT || '4747',
   DROIDCAM_PATH: '/video',

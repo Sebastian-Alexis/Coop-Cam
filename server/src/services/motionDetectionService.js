@@ -1,4 +1,5 @@
 import sharp from 'sharp';
+import { EventEmitter } from 'events';
 import { config } from '../config.js';
 import { 
   normalizeIllumination, 
@@ -28,8 +29,9 @@ import {
   calculateIgnoredPixelCount 
 } from '../utils/motionDetectionUtils.js';
 
-class MotionDetectionService {
+class MotionDetectionService extends EventEmitter {
   constructor(mjpegProxy, eventEmitter) {
+    super();
     console.log('[Motion] Initializing motion detection service...');
     console.log('[Motion] Config enabled:', config.motionDetection.enabled);
     console.log('[Motion] Config threshold:', config.motionDetection.threshold);

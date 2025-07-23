@@ -1,9 +1,9 @@
 //stream controller - business logic for MJPEG stream management and control
 //factory function receives dependencies for clean testing and modularity
 
-export const createStreamController = ({ mjpegProxy, authService, config }) => {
-  if (!mjpegProxy) {
-    throw new Error('StreamController: mjpegProxy dependency is required.');
+export const createStreamController = ({ streamManager, authService, config }) => {
+  if (!streamManager) {
+    throw new Error('StreamController: streamManager dependency is required.');
   }
   if (!authService) {
     throw new Error('StreamController: authService dependency is required.');
@@ -12,8 +12,23 @@ export const createStreamController = ({ mjpegProxy, authService, config }) => {
     throw new Error('StreamController: config dependency is required.');
   }
 
-  //handle main MJPEG stream endpoint with client management
+  //handle main MJPEG stream endpoint with client management and source selection
   const handleStream = (req, res) => {
+    const { sourceId } = req.params;
+    
+    //get appropriate proxy (default if no sourceId specified)
+    const proxy = sourceId 
+      ? streamManager.getProxy(sourceId)
+      : streamManager.getDefaultProxy();
+
+    if (!proxy) {
+      return res.status(404).json({
+        success: false,
+        message: `Stream source '${sourceId}' not found`,
+        availableSources: streamManager.listAvailableSources()
+      });
+    }
+
     //parse FPS from query parameter
     const fps = req.query.fps ? parseInt(req.query.fps) : null;
     const clientId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}${fps ? `-fps${fps}` : ''}`;
@@ -28,13 +43,27 @@ export const createStreamController = ({ mjpegProxy, authService, config }) => {
       req.socket.setTimeout(0); //disable timeout for streaming
     }
     
-    mjpegProxy.addClient(clientId, res, fps);
+    proxy.addClient(clientId, res, fps);
   };
 
   //handle stream pause with authentication and rate limiting
   const pauseStream = async (req, res) => {
+    const { sourceId } = req.params;
     const clientIp = req.ip;
     const { password } = req.body;
+    
+    //get appropriate proxy (default if no sourceId specified)
+    const proxy = sourceId 
+      ? streamManager.getProxy(sourceId)
+      : streamManager.getDefaultProxy();
+
+    if (!proxy) {
+      return res.status(404).json({
+        success: false,
+        message: `Stream source '${sourceId}' not found`,
+        availableSources: streamManager.listAvailableSources()
+      });
+    }
     
     //validate password presence
     if (!password) {
@@ -66,20 +95,22 @@ export const createStreamController = ({ mjpegProxy, authService, config }) => {
     }
     
     try {
-      //pause the stream
-      const paused = await mjpegProxy.pauseStream();
+      //pause the specific stream
+      const paused = await proxy.pauseStream();
+      const sourceInfo = sourceId ? ` (source: ${sourceId})` : '';
       
       if (paused) {
-        console.log(`[Stream Pause] Stream paused by IP: ${clientIp} at ${new Date().toISOString()}`);
+        console.log(`[Stream Pause] Stream paused by IP: ${clientIp}${sourceInfo} at ${new Date().toISOString()}`);
         res.json({
           success: true,
-          message: 'Stream paused for 5 minutes',
-          pauseDuration: 300 //seconds
+          message: `Stream paused for 5 minutes${sourceInfo}`,
+          pauseDuration: 300, //seconds
+          sourceId: sourceId || 'default'
         });
       } else {
         res.status(400).json({
           success: false,
-          message: 'Stream is already paused'
+          message: `Stream is already paused${sourceInfo}`
         });
       }
     } catch (error) {
@@ -93,12 +124,28 @@ export const createStreamController = ({ mjpegProxy, authService, config }) => {
 
   //get stream status including pause state and client information
   const getStreamStatus = (req, res) => {
+    const { sourceId } = req.params;
+    
     try {
-      const pauseStatus = mjpegProxy.getPauseStatus();
-      const proxyStats = mjpegProxy.getStats();
+      //get appropriate proxy (default if no sourceId specified)
+      const proxy = sourceId 
+        ? streamManager.getProxy(sourceId)
+        : streamManager.getDefaultProxy();
+
+      if (!proxy) {
+        return res.status(404).json({
+          success: false,
+          message: `Stream source '${sourceId}' not found`,
+          availableSources: streamManager.listAvailableSources()
+        });
+      }
+
+      const pauseStatus = proxy.getPauseStatus();
+      const proxyStats = proxy.getStats();
       
       res.json({
         success: true,
+        sourceId: sourceId || 'default',
         ...pauseStatus,
         clientCount: proxyStats.clientCount,
         isConnected: proxyStats.isConnected
@@ -112,9 +159,33 @@ export const createStreamController = ({ mjpegProxy, authService, config }) => {
     }
   };
 
+  //list all available stream sources
+  const listSources = (req, res) => {
+    try {
+      const sources = streamManager.listAvailableSources();
+      const sourcesWithHealth = sources.map(source => ({
+        ...source,
+        health: streamManager.getSourceHealth(source.id)
+      }));
+
+      res.json({
+        success: true,
+        sources: sourcesWithHealth,
+        totalSources: streamManager.totalSources
+      });
+    } catch (error) {
+      console.error('[Stream Sources] Error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get stream sources'
+      });
+    }
+  };
+
   return {
     handleStream,
     pauseStream,
-    getStreamStatus
+    getStreamStatus,
+    listSources
   };
 };
