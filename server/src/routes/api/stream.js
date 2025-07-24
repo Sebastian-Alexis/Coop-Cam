@@ -10,10 +10,33 @@ export const createStreamRouter = ({ streamController }) => {
   //list available stream sources
   router.get('/sources', streamController.listSources);
 
-  //default stream routes (backward compatibility)
-  router.get('/stream', streamController.handleStream);
-  router.post('/stream/pause', express.json(), streamController.pauseStream);
-  router.get('/stream/status', streamController.getStreamStatus);
+  //default stream route removed - use explicit sourceId routes like /stream/coop1
+  router.get('/stream', (req, res) => {
+    res.status(404).json({
+      success: false,
+      message: 'Default stream endpoint removed. Use explicit source endpoints.',
+      availableSources: ['/api/stream/coop1', '/api/stream/coop2'],
+      hint: 'Try /api/stream/coop1 or /api/stream/coop2'
+    });
+  });
+  
+  router.post('/stream/pause', (req, res) => {
+    res.status(404).json({
+      success: false,
+      message: 'Default stream pause endpoint removed. Use explicit source endpoints.',
+      availableSources: ['/api/stream/coop1/pause', '/api/stream/coop2/pause'],
+      hint: 'Try /api/stream/coop1/pause or /api/stream/coop2/pause'
+    });
+  });
+  
+  router.get('/stream/status', (req, res) => {
+    res.status(404).json({
+      success: false,
+      message: 'Default stream status endpoint removed. Use explicit source endpoints.',
+      availableSources: ['/api/stream/coop1/status', '/api/stream/coop2/status'],
+      hint: 'Try /api/stream/coop1/status or /api/stream/coop2/status'
+    });
+  });
 
   //source-specific stream routes
   router.get('/stream/:sourceId', streamController.handleStream);

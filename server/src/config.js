@@ -3,13 +3,14 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-if (process.env.NODE_ENV !== 'test') {
-  dotenv.config();
-}
-
-//get directory paths
+//get directory paths first
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+if (process.env.NODE_ENV !== 'test') {
+  //look for .env file in parent directory (project root)
+  dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+}
 
 //parse stream sources configuration
 function parseStreamSources() {
@@ -20,10 +21,14 @@ function parseStreamSources() {
       if (!Array.isArray(sources) || sources.length === 0) {
         throw new Error('STREAM_SOURCES must be a non-empty JSON array.');
       }
-      //ensure there's exactly one default
-      const defaultSources = sources.filter(s => s.isDefault);
-      if (defaultSources.length !== 1) {
-        throw new Error('Exactly one stream source must be marked with "isDefault": true.');
+      //ensure there's exactly one default (isDefault: true or the first one if none specified)
+      const defaultSources = sources.filter(s => s.isDefault === true);
+      if (defaultSources.length === 0) {
+        //if no explicit default, make the first one default
+        sources[0].isDefault = true;
+        console.log('[Config] No explicit default source found, using first source as default');
+      } else if (defaultSources.length > 1) {
+        throw new Error('Only one stream source can be marked with "isDefault": true.');
       }
       //validate source structure
       for (const source of sources) {

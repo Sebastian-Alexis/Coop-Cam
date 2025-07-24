@@ -500,10 +500,10 @@ describe('Comprehensive API Endpoints Integration Tests', () => {
       })
     })
     
-    describe('POST /api/stream/pause', () => {
+    describe('POST /api/stream/coop1/pause', () => {
       it('should pause stream with correct password', async () => {
         const response = await request(app)
-          .post('/api/stream/pause')
+          .post('/api/stream/coop1/pause')
           .send({ password: 'test-password-123' })
           .expect(200)
           .expect('Content-Type', /json/)
@@ -517,7 +517,7 @@ describe('Comprehensive API Endpoints Integration Tests', () => {
       
       it('should reject incorrect password', async () => {
         const response = await request(app)
-          .post('/api/stream/pause')
+          .post('/api/stream/coop1/pause')
           .send({ password: 'wrong-password' })
           .expect(401)
         
@@ -534,7 +534,7 @@ describe('Comprehensive API Endpoints Integration Tests', () => {
       
       it('should validate password is provided', async () => {
         const response = await request(app)
-          .post('/api/stream/pause')
+          .post('/api/stream/coop1/pause')
           .send({})
           .expect(400)
         
@@ -545,10 +545,10 @@ describe('Comprehensive API Endpoints Integration Tests', () => {
       })
     })
     
-    describe('GET /api/stream/status', () => {
+    describe('GET /api/stream/coop1/status', () => {
       it('should return stream status', async () => {
         const response = await request(app)
-          .get('/api/stream/status')
+          .get('/api/stream/coop1/status')
           .expect(200)
           .expect('Content-Type', /json/)
         
@@ -1367,7 +1367,7 @@ describe('Comprehensive API Endpoints Integration Tests', () => {
           requests: [
             { endpoint: '/api/stats' },
             { endpoint: '/api/flashlight/status' },
-            { endpoint: '/api/stream/status' },
+            { endpoint: '/api/stream/coop1/status' },
             { endpoint: '/api/droidcam-status' }
           ]
         })
@@ -1406,7 +1406,7 @@ describe('Comprehensive API Endpoints Integration Tests', () => {
   describe('Error Handling', () => {
     it.skip('should handle malformed JSON in POST requests', async () => {
       const response = await request(app)
-        .post('/api/stream/pause')
+        .post('/api/stream/coop1/pause')
         .set('Content-Type', 'application/json')
         .send('{"invalid json}')
         .expect(400)
@@ -1467,7 +1467,7 @@ describe('Authentication & Authorization Tests', () => {
   
   it.skip('should protect sensitive operations with password', async () => {
     const response = await request(app)
-      .post('/api/stream/pause')
+      .post('/api/stream/coop1/pause')
       .send({}) // No password
       .expect(400)
     
@@ -1488,7 +1488,7 @@ describe.skip('Rate Limiting Tests', () => {
     // Make 3 failed attempts
     for (let i = 0; i < 3; i++) {
       await request(app)
-        .post('/api/stream/pause')
+        .post('/api/stream/coop1/pause')
         .set('X-Forwarded-For', '10.0.0.1')
         .send({ password: 'wrong' })
         .expect(401)
@@ -1496,7 +1496,7 @@ describe.skip('Rate Limiting Tests', () => {
     
     // 4th attempt should be rate limited
     const response = await request(app)
-      .post('/api/stream/pause')
+      .post('/api/stream/coop1/pause')
       .set('X-Forwarded-For', '10.0.0.1')
       .send({ password: 'correct-password' })
       .expect(429)
@@ -1508,7 +1508,7 @@ describe.skip('Rate Limiting Tests', () => {
     // IP 1 makes 2 attempts
     for (let i = 0; i < 2; i++) {
       await request(app)
-        .post('/api/stream/pause')
+        .post('/api/stream/coop1/pause')
         .set('X-Forwarded-For', '10.0.0.2')
         .send({ password: 'wrong' })
         .expect(401)
@@ -1516,7 +1516,7 @@ describe.skip('Rate Limiting Tests', () => {
     
     // IP 2 should still be able to attempt
     const response = await request(app)
-      .post('/api/stream/pause')
+      .post('/api/stream/coop1/pause')
       .set('X-Forwarded-For', '10.0.0.3')
       .send({ password: 'test-password-123' })
       .expect(200)

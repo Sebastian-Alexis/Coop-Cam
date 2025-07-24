@@ -203,10 +203,10 @@ describe('API Endpoints - Working Tests', () => {
   })
   
   describe('Stream Control Endpoints', () => {
-    describe('POST /api/stream/pause', () => {
+    describe('POST /api/stream/coop1/pause', () => {
       it('should pause stream with correct password', async () => {
         const response = await request(app)
-          .post('/api/stream/pause')
+          .post('/api/stream/coop1/pause')
           .send({ password: 'test-password-123' })
           .expect(200)
           .expect('Content-Type', /json/)
@@ -220,7 +220,7 @@ describe('API Endpoints - Working Tests', () => {
       
       it('should reject incorrect password', async () => {
         const response = await request(app)
-          .post('/api/stream/pause')
+          .post('/api/stream/coop1/pause')
           .send({ password: 'wrong-password' })
           .expect(401)
         
@@ -231,10 +231,10 @@ describe('API Endpoints - Working Tests', () => {
       })
     })
     
-    describe('GET /api/stream/status', () => {
+    describe('GET /api/stream/coop1/status', () => {
       it('should return stream status', async () => {
         const response = await request(app)
-          .get('/api/stream/status')
+          .get('/api/stream/coop1/status')
           .expect(200)
           .expect('Content-Type', /json/)
         
@@ -540,7 +540,7 @@ describe('Security Tests', () => {
   describe('Input Validation', () => {
     it('should validate password is required', async () => {
       const response = await request(app)
-        .post('/api/stream/pause')
+        .post('/api/stream/coop1/pause')
         .send({})
         .expect(400)
       

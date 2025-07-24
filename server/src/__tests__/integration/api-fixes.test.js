@@ -163,26 +163,26 @@ describe('Fixed API Tests', () => {
       
       // Make 3 attempts with mixed passwords
       await request(app)
-        .post('/api/stream/pause')
+        .post('/api/stream/coop1/pause')
         .set('X-Forwarded-For', testIP)
         .send({ password: 'wrong' })
         .expect(401)
       
       await request(app)
-        .post('/api/stream/pause')
+        .post('/api/stream/coop1/pause')
         .set('X-Forwarded-For', testIP)
         .send({ password: 'test-password-123' })
         .expect(200)
       
       await request(app)
-        .post('/api/stream/pause')
+        .post('/api/stream/coop1/pause')
         .set('X-Forwarded-For', testIP)
         .send({ password: 'wrong' })
         .expect(401)
       
       // 4th attempt should be rate limited
       const response = await request(app)
-        .post('/api/stream/pause')
+        .post('/api/stream/coop1/pause')
         .set('X-Forwarded-For', testIP)
         .send({ password: 'test-password-123' })
         .expect(429)

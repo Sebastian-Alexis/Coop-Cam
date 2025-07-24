@@ -10,6 +10,8 @@ export const createStaticRouter = ({ staticController }) => {
   //route mapping to controller methods
   router.get('/', staticController.serveHomePage);
   router.get('/coop', staticController.serveCoopPage);
+  router.get('/coop1', staticController.serveCoop1Page);
+  router.get('/coop2', staticController.serveCoop2Page);
   router.get('/about', staticController.serveAboutPage);
   router.get('/mobile.css', staticController.serveMobileCSS);
   router.get('/gestures.js', staticController.serveGesturesJS);

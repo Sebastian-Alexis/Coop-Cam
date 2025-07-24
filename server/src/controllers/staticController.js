@@ -36,6 +36,12 @@ export const createStaticController = ({ config }) => {
   //serve stream viewer page
   const serveCoopPage = serveStaticHTML('coop.html');
 
+  //serve coop page with camera 1 (enclosure) as default
+  const serveCoop1Page = serveStaticHTML('coop.html');
+
+  //serve coop page with camera 2 (interior) as default
+  const serveCoop2Page = serveStaticHTML('coop.html');
+
   //serve info/about page
   const serveAboutPage = serveStaticHTML('about.html');
 
@@ -72,6 +78,8 @@ export const createStaticController = ({ config }) => {
   return {
     serveHomePage,
     serveCoopPage,
+    serveCoop1Page,
+    serveCoop2Page,
     serveAboutPage,
     serveMobileCSS,
     serveGesturesJS

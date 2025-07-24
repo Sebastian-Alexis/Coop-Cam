@@ -26,6 +26,15 @@ export const createStreamManager = ({ config }) => {
       return proxies.get(sourceId);
     }
 
+    //if requesting the default source and default proxy exists, return it
+    if (sourceId === defaultSource.id && proxies.has('default')) {
+      const defaultProxy = proxies.get('default');
+      //also store it under the sourceId for future lookups
+      proxies.set(sourceId, defaultProxy);
+      console.log(`[StreamManager] Reusing default proxy for source: ${sourceId}`);
+      return defaultProxy;
+    }
+
     //find the source configuration
     const sourceConfig = streamSources.find(s => s.id === sourceId);
     if (!sourceConfig) {

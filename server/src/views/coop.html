@@ -681,7 +681,7 @@
             <!-- Stream Image -->
             <img 
               id="stream"
-              src="/api/stream" 
+              src="/api/stream/coop1" 
               alt="Live Coop Stream" 
               class="w-full h-auto object-contain"
               onerror="handleStreamError()"
@@ -705,12 +705,12 @@
             <!-- Retro Bottom Bar Layout -->
             <div class="retro-bottom-bar w-full">
             <!-- Section 1: Coop Enclosure -->
-            <div class="retro-section">
+            <div class="retro-section retro-section-interactive" onclick="switchCamera('coop1')" id="cameraBtn1">
               <span class="retro-text-large">Coop Enclosure</span>
             </div>
 
-            <!-- Section 2: Inside Coop (Static Decorative Text) -->
-            <div class="retro-section">
+            <!-- Section 2: Inside Coop (Interactive Camera Switch) -->
+            <div class="retro-section retro-section-interactive" onclick="switchCamera('coop2')" id="cameraBtn2">
               <span class="retro-text-large">Inside Coop</span>
             </div>
 
@@ -719,7 +719,14 @@
               <span class="retro-text-large" id="currentTime">11:47:23 pst</span>
             </div>
 
-            <!-- Section 4: Weather -->
+            <!-- Section 4: Viewer Stats -->
+            <div class="retro-section">
+              <span class="retro-text-large">
+                <span id="viewerCount">1</span> <span id="viewerText">viewer</span>
+              </span>
+            </div>
+
+            <!-- Section 5: Weather -->
             <div class="retro-section retro-section-weather">
               <!-- Icon + Temperature (Left) -->
               <div class="weather-left">
@@ -849,6 +856,7 @@
     let motionEvents = [];
     let motionNotificationCount = 0;
     let notificationsEnabled = true;
+    let currentCamera = 'coop1'; //track current camera source
     const MAX_RETRY_COUNT = 10;
     const RETRY_DELAY = 2000; // Start with 2 seconds
     const MAX_MOTION_EVENTS = 50;
@@ -867,6 +875,47 @@
         fabMenu.classList.add('show');
         if (fabOverlay) fabOverlay.classList.add('show');
         if (fabButton) fabButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>';
+      }
+    }
+    
+    //camera switching function
+    function switchCamera(cameraId) {
+      if (currentCamera === cameraId) return; //already on this camera
+      
+      currentCamera = cameraId;
+      
+      //update stream source
+      const streamImg = document.getElementById('stream');
+      if (streamImg) {
+        const streamUrl = `/api/stream/${cameraId}`;
+        streamImg.src = `${streamUrl}?t=${Date.now()}`;
+      }
+      
+      //update button active states
+      updateActiveButton(cameraId);
+      
+      //reset retry count for new stream
+      streamRetryCount = 0;
+    }
+    
+    //update active button styling
+    function updateActiveButton(activeCameraId) {
+      const btn1 = document.getElementById('cameraBtn1');
+      const btn2 = document.getElementById('cameraBtn2');
+      
+      //remove active state from all buttons
+      [btn1, btn2].forEach(btn => {
+        if (btn) {
+          btn.style.background = '';
+          btn.style.transform = '';
+        }
+      });
+      
+      //add active state to current button
+      const activeBtn = activeCameraId === 'coop1' ? btn1 : btn2;
+      if (activeBtn) {
+        activeBtn.style.background = 'linear-gradient(135deg, #4ade80, #22c55e)';
+        activeBtn.style.transform = 'translateY(-2px)';
       }
     }
     
@@ -963,7 +1012,7 @@
     //check pause status on page load
     async function checkPauseStatus() {
       try {
-        const response = await fetch('/api/stream/status');
+        const response = await fetch(`/api/stream/${currentCamera}/status`);
         const data = await response.json();
         updatePauseButton(data.isPaused, data.remainingSeconds);
       } catch (error) {
@@ -1000,7 +1049,7 @@
       btnText.textContent = 'Pausing...';
       
       try {
-        const response = await fetch('/api/stream/pause', {
+        const response = await fetch(`/api/stream/${currentCamera}/pause`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ password })
@@ -1126,7 +1175,7 @@
           reconnectTimeout = setTimeout(() => {
             console.log(`Reconnecting stream (attempt ${streamRetryCount}/${MAX_RETRY_COUNT})...`);
             // Force reload by adding timestamp
-            streamImg.src = `/api/stream?t=${Date.now()}`;
+            streamImg.src = `/api/stream/${currentCamera}?t=${Date.now()}`;
           }, delay);
         } else {
           console.error('Max reconnection attempts reached');
@@ -1189,7 +1238,7 @@
       }
       streamRetryCount = 0;
       const streamImg = document.getElementById('stream');
-      streamImg.src = `/api/stream?t=${Date.now()}`;
+      streamImg.src = `/api/stream/${currentCamera}?t=${Date.now()}`;
     }
 
     //check flashlight status from server
@@ -2659,7 +2708,7 @@
             requests: [
               { endpoint: '/api/stats' },
               { endpoint: '/api/weather' },
-              { endpoint: '/api/stream/status' },
+              { endpoint: `/api/stream/${currentCamera}/status` },
               { endpoint: '/api/flashlight/status' }
             ]
           })
@@ -2678,7 +2727,7 @@
                 case '/api/weather':
                   handleWeatherUpdate({ success: true, data: result.data });
                   break;
-                case '/api/stream/status':
+                case `/api/stream/${currentCamera}/status`:
                   handleStreamStatusUpdate(result.data);
                   break;
                 case '/api/flashlight/status':
@@ -2792,6 +2841,7 @@
     updateWeather();
     checkFlashlightStatus();
     setupStreamReconnection();
+    updateActiveButton(currentCamera); //set initial camera button state
     updateRecordings();
     updateFullscreenButton();
     initializeSSE();
@@ -2944,6 +2994,15 @@
     </button>
   </div>
   
+  <!-- Hidden Elements for JavaScript Functions -->
+  <button id="pauseBtn" style="display: none;">
+    <span id="pauseBtnText">Pause</span>
+  </button>
+  
+  <button id="flashlightBtn" style="display: none;">
+    <span id="timerText">Off</span>
+  </button>
+
   <!-- Context Menu Template -->
   <div id="contextMenu" class="context-menu">
     <div class="context-menu-item" onclick="shareStream()">
