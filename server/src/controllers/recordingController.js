@@ -53,8 +53,9 @@ export const createRecordingController = ({ thumbnailService, reactionService, c
   const getRecentRecordings = async (req, res) => {
     try {
       const limit = parseInt(req.query.limit) || 3;
+      const camera = req.query.camera || 'default'; //camera parameter for multi-camera support
       const userId = getUserId(req);
-      const recordings = await thumbnailService.getRecentRecordings(config.recording.outputDir, limit);
+      const recordings = await thumbnailService.getRecentRecordings(config.recording.outputDir, limit, camera);
       
       //get reactions for all recordings
       const filenames = recordings.map(rec => rec.filename);

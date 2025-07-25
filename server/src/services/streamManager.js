@@ -99,6 +99,15 @@ export const createStreamManager = ({ config }) => {
     return health;
   }
 
+  //get complete stats for all active sources
+  function getAllStats() {
+    const stats = {};
+    proxies.forEach((proxy, sourceId) => {
+      stats[sourceId] = proxy.getStats();
+    });
+    return stats;
+  }
+
   //gracefully shut down all active proxy connections
   function shutdown() {
     console.log('[StreamManager] Shutting down all proxies...');
@@ -146,6 +155,7 @@ export const createStreamManager = ({ config }) => {
     //health monitoring
     getSourceHealth,
     getAllSourcesHealth,
+    getAllStats,
     
     //lifecycle management
     shutdown,

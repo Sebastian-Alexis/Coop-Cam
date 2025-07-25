@@ -58,35 +58,51 @@ createStaticFilesMiddleware(app);
 const streamManager = createStreamManager({ config });
 console.log('[Server] Stream manager created with', config.streamSources.length, 'sources');
 
-// Get the default proxy from StreamManager for services that need it
-const mjpegProxy = streamManager.getDefaultProxy();
-
 // Create shared event emitter for services
 const eventEmitter = new EventEmitter();
 
-// Create motion detection service
-const motionDetectionService = new MotionDetectionService(mjpegProxy, eventEmitter);
-console.log('[Server] Motion detection service created');
+// Create per-camera service instances for multi-camera support
+const motionDetectionServices = new Map(); // Map<sourceId, MotionDetectionService>
+const recordingServices = new Map(); // Map<sourceId, RecordingService>
 
-// Connect flashlight state service to motion detection
-flashlightState.setMotionDetectionService(motionDetectionService);
-console.log('[Server] Flashlight state service connected to motion detection');
+// Initialize services for each configured stream source
+for (const streamSource of config.streamSources) {
+  const { id: sourceId, name: sourceName } = streamSource;
+  console.log(`[Server] Initializing services for camera: ${sourceId} (${sourceName})`);
+  
+  // Get the proxy for this specific camera
+  const mjpegProxy = streamManager.getProxy(sourceId);
+  
+  // Create motion detection service for this camera
+  const motionDetectionService = new MotionDetectionService(mjpegProxy, eventEmitter);
+  motionDetectionServices.set(sourceId, motionDetectionService);
+  console.log(`[Server] Motion detection service created for camera: ${sourceId}`);
 
-// Connect motion events service to motion detection
-motionEventsService.startListening(motionDetectionService);
-console.log('[Server] Motion events service connected to motion detection');
-
-// Create recording service
-let recordingService = null;
-if (config.recording.enabled) {
-  recordingService = new RecordingService(mjpegProxy, eventEmitter);
-  console.log('[Server] Recording service created, starting...');
-  recordingService.start().catch(err => {
-    console.error('[Recording] Failed to start:', err);
-  });
-} else {
-  console.log('[Server] Recording service not created (disabled in config)');
+  // Create recording service for this camera if enabled
+  if (config.recording.enabled) {
+    const recordingService = new RecordingService(mjpegProxy, eventEmitter);
+    recordingServices.set(sourceId, recordingService);
+    console.log(`[Server] Recording service created for camera: ${sourceId}, starting...`);
+    recordingService.start().catch(err => {
+      console.error(`[Recording] Failed to start recording service for camera ${sourceId}:`, err);
+    });
+  }
 }
+
+// Connect flashlight state service to DEFAULT camera's motion detection for backward compatibility
+const defaultMotionService = motionDetectionServices.get(config.streamSources.find(s => s.isDefault).id);
+if (defaultMotionService) {
+  flashlightState.setMotionDetectionService(defaultMotionService);
+  console.log('[Server] Flashlight state service connected to default camera motion detection');
+}
+
+// Connect motion events service to all motion detection services
+motionDetectionServices.forEach((service, sourceId) => {
+  motionEventsService.startListening(service);
+  console.log(`[Server] Motion events service connected to camera: ${sourceId}`);
+});
+
+console.log(`[Server] Multi-camera services initialized: ${motionDetectionServices.size} motion detection services, ${recordingServices.size} recording services`);
 
 // Create thumbnail service
 const thumbnailService = new ThumbnailService();
@@ -99,7 +115,7 @@ console.log('[Server] Reaction service created');
 
 // Listen for motion events to broadcast to SSE clients
 eventEmitter.on('motion', (data) => {
-  console.log('[Motion] Event received:', data);
+  console.log(`[Motion] Event received from camera ${data.sourceId}:`, data);
   
   const motionEvent = {
     type: 'motion',
@@ -107,7 +123,8 @@ eventEmitter.on('motion', (data) => {
     intensity: data.intensity || 0,
     regions: data.regions || [],
     frameNumber: data.frameNumber || 0,
-    recordingStarted: false
+    recordingStarted: false,
+    sourceId: data.sourceId || 'default' //camera identifier for multi-camera support
   };
   
   // Broadcast to all SSE clients
@@ -144,9 +161,9 @@ app.use(createConnectionManagementMiddleware());
 const weatherService = { fetchWeatherData, getCacheStatus };
 initializeRoutes(app, {
   flashlightState,
-  mjpegProxy, // Keep for existing services (motion detection, recording, etc.)
-  streamManager, // New multi-stream manager
-  recordingService,
+  streamManager, // Multi-stream manager
+  motionDetectionServices, // Map of per-camera motion services
+  recordingServices, // Map of per-camera recording services
   weatherService,
   sseService,
   motionEventsService,
@@ -169,4 +186,4 @@ app.use(createGlobalErrorHandler());
 // Export app and other modules needed for testing
 import { weatherCache } from './services/weatherService.js';
 
-export { app as default, app, mjpegProxy, flashlightState, weatherCache };
+export { app as default, app, streamManager, flashlightState, weatherCache };

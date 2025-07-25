@@ -807,35 +807,69 @@
         </div>
       </div>
       
-      <!-- Today's Recordings Section -->
+      <!-- Today's Recordings Section - Multi-Camera Layout -->
       <div class="bg-base-100 border-t border-base-300">
         <div class="container-padding max-w-7xl mx-auto py-4 md:py-6">
-          <h2 class="text-lg font-semibold mb-4">Today's Recordings (PST)</h2>
-          <div id="recordingsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-4 mobile-stack">
-            <!-- Loading skeleton -->
-            <div class="bg-base-200 rounded-xl p-4 animate-pulse">
-              <div class="aspect-video bg-base-300 rounded-lg mb-3"></div>
-              <div class="h-4 bg-base-300 rounded w-3/4 mb-2"></div>
-              <div class="h-3 bg-base-300 rounded w-1/2"></div>
+          <!-- Coop 1 Recordings -->
+          <div class="mb-8">
+            <h2 class="text-lg font-semibold mb-4">Coop 1 Recordings (PST)</h2>
+            <div id="recordingsContainer-coop1" class="grid grid-cols-1 md:grid-cols-3 gap-4 mobile-stack">
+              <!-- Loading skeleton -->
+              <div class="bg-base-200 rounded-xl p-4 animate-pulse">
+                <div class="aspect-video bg-base-300 rounded-lg mb-3"></div>
+                <div class="h-4 bg-base-300 rounded w-3/4 mb-2"></div>
+                <div class="h-3 bg-base-300 rounded w-1/2"></div>
+              </div>
+              <div class="bg-base-200 rounded-xl p-4 animate-pulse">
+                <div class="aspect-video bg-base-300 rounded-lg mb-3"></div>
+                <div class="h-4 bg-base-300 rounded w-3/4 mb-2"></div>
+                <div class="h-3 bg-base-300 rounded w-1/2"></div>
+              </div>
+              <div class="bg-base-200 rounded-xl p-4 animate-pulse">
+                <div class="aspect-video bg-base-300 rounded-lg mb-3"></div>
+                <div class="h-4 bg-base-300 rounded w-3/4 mb-2"></div>
+                <div class="h-3 bg-base-300 rounded w-1/2"></div>
+              </div>
             </div>
-            <div class="bg-base-200 rounded-xl p-4 animate-pulse">
-              <div class="aspect-video bg-base-300 rounded-lg mb-3"></div>
-              <div class="h-4 bg-base-300 rounded w-3/4 mb-2"></div>
-              <div class="h-3 bg-base-300 rounded w-1/2"></div>
-            </div>
-            <div class="bg-base-200 rounded-xl p-4 animate-pulse">
-              <div class="aspect-video bg-base-300 rounded-lg mb-3"></div>
-              <div class="h-4 bg-base-300 rounded w-3/4 mb-2"></div>
-              <div class="h-3 bg-base-300 rounded w-1/2"></div>
+            <!-- Empty state for Coop 1 (hidden by default) -->
+            <div id="recordingsEmpty-coop1" class="text-center py-8 hidden">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto mb-4 text-base-content/30">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
+              </svg>
+              <p class="text-base-content/60">No Coop 1 recordings today yet</p>
+              <p class="text-sm text-base-content/40 mt-1">The top 3 recordings with the most movement will appear here</p>
             </div>
           </div>
-          <!-- Empty state (hidden by default) -->
-          <div id="recordingsEmpty" class="text-center py-8 hidden">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto mb-4 text-base-content/30">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
-            </svg>
-            <p class="text-base-content/60">No recordings today yet</p>
-            <p class="text-sm text-base-content/40 mt-1">The top 3 recordings with the most movement will appear here</p>
+
+          <!-- Coop 2 Recordings -->
+          <div>
+            <h2 class="text-lg font-semibold mb-4">Coop 2 Recordings (PST)</h2>
+            <div id="recordingsContainer-coop2" class="grid grid-cols-1 md:grid-cols-3 gap-4 mobile-stack">
+              <!-- Loading skeleton -->
+              <div class="bg-base-200 rounded-xl p-4 animate-pulse">
+                <div class="aspect-video bg-base-300 rounded-lg mb-3"></div>
+                <div class="h-4 bg-base-300 rounded w-3/4 mb-2"></div>
+                <div class="h-3 bg-base-300 rounded w-1/2"></div>
+              </div>
+              <div class="bg-base-200 rounded-xl p-4 animate-pulse">
+                <div class="aspect-video bg-base-300 rounded-lg mb-3"></div>
+                <div class="h-4 bg-base-300 rounded w-3/4 mb-2"></div>
+                <div class="h-3 bg-base-300 rounded w-1/2"></div>
+              </div>
+              <div class="bg-base-200 rounded-xl p-4 animate-pulse">
+                <div class="aspect-video bg-base-300 rounded-lg mb-3"></div>
+                <div class="h-4 bg-base-300 rounded w-3/4 mb-2"></div>
+                <div class="h-3 bg-base-300 rounded w-1/2"></div>
+              </div>
+            </div>
+            <!-- Empty state for Coop 2 (hidden by default) -->
+            <div id="recordingsEmpty-coop2" class="text-center py-8 hidden">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto mb-4 text-base-content/30">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
+              </svg>
+              <p class="text-base-content/60">No Coop 2 recordings today yet</p>
+              <p class="text-sm text-base-content/40 mt-1">The top 3 recordings with the most movement will appear here</p>
+            </div>
           </div>
         </div>
       </div>
@@ -1704,10 +1738,10 @@
       };
     }
 
-    //update recordings display
-    async function updateRecordings() {
+    //update recordings display for specific camera
+    async function updateRecordings(camera = 'default') {
       try {
-        const response = await fetch('/api/recordings/recent');
+        const response = await fetch(`/api/recordings/recent?camera=${camera}`);
         const data = await response.json();
         
         //store reaction types and recordings data globally for use in other functions
@@ -1717,10 +1751,19 @@
         if (data.chickenTones) {
           window.chickenTones = data.chickenTones;
         }
-        window.lastRecordingsData = data;
+        //store camera-specific recordings data
+        if (!window.lastRecordingsData) {
+          window.lastRecordingsData = {};
+        }
+        window.lastRecordingsData[camera] = data;
         
-        const container = document.getElementById('recordingsContainer');
-        const emptyState = document.getElementById('recordingsEmpty');
+        const container = document.getElementById(`recordingsContainer-${camera}`);
+        const emptyState = document.getElementById(`recordingsEmpty-${camera}`);
+        
+        if (!container || !emptyState) {
+          console.error(`[Recordings] Container elements not found for camera: ${camera}`);
+          return;
+        }
         
         if (!data.success || !data.recordings || data.recordings.length === 0) {
           //show empty state
@@ -1850,6 +1893,35 @@
       setTimeout(() => updateReactionsOnly(), 100);
     }
 
+    //update recordings for all cameras
+    async function updateAllRecordings() {
+      try {
+        //update both coop1 and coop2 recordings
+        await Promise.all([
+          updateRecordings('coop1'),
+          updateRecordings('coop2')
+        ]);
+      } catch (error) {
+        console.error('Failed to update recordings for all cameras:', error);
+      }
+    }
+
+    //helper function to find a recording across all cameras
+    function findRecordingByFilename(filename) {
+      if (!window.lastRecordingsData) return null;
+      
+      //search through all camera data
+      for (const [camera, data] of Object.entries(window.lastRecordingsData)) {
+        if (data?.recordings) {
+          const recording = data.recordings.find(r => r.filename === filename);
+          if (recording) {
+            return recording;
+          }
+        }
+      }
+      return null;
+    }
+
     //play recording in modal
     function playRecording(videoUrl, filename) {
       const modal = document.getElementById('videoModal');
@@ -1881,7 +1953,7 @@
       const buttonRect = button.getBoundingClientRect();
       
       //get current recording data and user reactions
-      const recording = window.lastRecordingsData?.recordings?.find(r => r.filename === filename);
+      const recording = findRecordingByFilename(filename);
       if (!recording || !window.reactionTypes) return;
       
       //populate popup content
@@ -2037,7 +2109,7 @@
       const currentTone = window.globalReactionTone || 'marshmallow';
       
       //get the recording's reaction data
-      const recording = window.lastRecordingsData?.recordings?.find(r => r.filename === filename);
+      const recording = findRecordingByFilename(filename);
       
       //check if user has this specific reaction with the current tone
       let hasReactionWithCurrentTone = false;
@@ -2085,9 +2157,9 @@
           //update UI with new reaction data
           updateReactionUI(filename, data.summary, data.userReactions);
           
-          //update cached recording data
-          if (window.lastRecordingsData?.recordings) {
-            const recording = window.lastRecordingsData.recordings.find(r => r.filename === filename);
+          //update cached recording data across all cameras
+          if (window.lastRecordingsData) {
+            const recording = findRecordingByFilename(filename);
             if (recording && recording.reactions) {
               recording.reactions.summary = data.summary;
               recording.reactions.userReactions = data.userReactions;
@@ -2837,7 +2909,7 @@
         updateWeather();
       }
       checkFlashlightStatus();
-      updateRecordings();
+      updateAllRecordings();
       checkPauseStatus();
       updateReactionsOnly();
       
@@ -2850,7 +2922,7 @@
         intervalRefs.weather = setInterval(updateWeather, intervals.weather);
       }
       intervalRefs.flashlight = setInterval(checkFlashlightStatus, intervals.flashlight);
-      intervalRefs.recordings = setInterval(updateRecordings, intervals.recordings);
+      intervalRefs.recordings = setInterval(updateAllRecordings, intervals.recordings);
       intervalRefs.pauseStatus = setInterval(checkPauseStatus, intervals.pauseStatus);
       intervalRefs.reactions = setInterval(updateReactionsOnly, intervals.reactions);
     }
@@ -2891,7 +2963,7 @@
     checkFlashlightStatus();
     setupStreamReconnection();
     updateActiveButton(currentCamera); //set initial camera button state
-    updateRecordings();
+    updateAllRecordings();
     updateFullscreenButton();
     initializeSSE();
     checkPauseStatus();

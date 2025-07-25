@@ -107,8 +107,8 @@ class ThumbnailService {
     }
   }
 
-  //get today's recordings with thumbnails (top 3 by movement)
-  async getTodaysRecordings(recordingsDir, limit = 3) {
+  //get today's recordings with thumbnails (top 3 by movement) for specific camera
+  async getTodaysRecordings(recordingsDir, limit = 3, camera = 'default') {
     try {
       const recordings = [];
       
@@ -127,9 +127,21 @@ class ThumbnailService {
         return [];
       }
       
-      //get video files in today's directory
+      //get video files in today's directory for specific camera
       const files = await fs.readdir(todayDir);
-      const videoFiles = files.filter(file => file.endsWith('.mp4'));
+      const allVideoFiles = files.filter(file => file.endsWith('.mp4'));
+      
+      //filter by camera using the new filename format: motion_${sourceId}_${recordingId}.mp4
+      const videoFiles = allVideoFiles.filter(file => {
+        //check for new format with camera prefix
+        if (file.includes(`motion_${camera}_`)) {
+          return true;
+        }
+        //backward compatibility: if no camera specified and file doesn't have camera prefix
+        return camera === 'default' && file.startsWith('motion_') && !file.match(/motion_[^_]+_/);
+      });
+      
+      console.log(`[Thumbnail] Found ${videoFiles.length} recordings for camera ${camera} (${allVideoFiles.length} total)`);
       
       //load all recordings with metadata
       for (const videoFile of videoFiles) {
@@ -178,8 +190,8 @@ class ThumbnailService {
   }
   
   //legacy method for compatibility
-  async getRecentRecordings(recordingsDir, limit = 3) {
-    return this.getTodaysRecordings(recordingsDir, limit);
+  async getRecentRecordings(recordingsDir, limit = 3, camera = 'default') {
+    return this.getTodaysRecordings(recordingsDir, limit, camera);
   }
 }
 

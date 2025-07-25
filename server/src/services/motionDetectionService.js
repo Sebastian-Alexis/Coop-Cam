@@ -43,6 +43,7 @@ class MotionDetectionService extends EventEmitter {
 
     this.eventEmitter = eventEmitter;
     this.mjpegProxy = mjpegProxy;
+    this.sourceId = mjpegProxy.sourceId; //camera identifier for multi-camera support
     this.lastCheckTime = 0;
     this.previousFrameBuffer = null;
     this.processing = false;
@@ -381,9 +382,14 @@ class MotionDetectionService extends EventEmitter {
           console.log(`[Motion] Emitting motion event with ID: ${motionData.id}`);
           
           try {
-            this.eventEmitter.emit('motion', motionData);
-            this.eventEmitter.emit('motion-start', motionData);
-            console.log('[Motion] Motion events emitted successfully');
+            //add camera source information to motion data
+            const motionEventData = {
+              ...motionData,
+              sourceId: this.sourceId //camera identifier for multi-camera recording
+            };
+            this.eventEmitter.emit('motion', motionEventData);
+            this.eventEmitter.emit('motion-start', motionEventData);
+            console.log(`[Motion] Motion events emitted successfully for camera: ${this.sourceId}`);
           } catch (emitError) {
             console.error('[Motion] Error emitting motion events:', emitError);
           }

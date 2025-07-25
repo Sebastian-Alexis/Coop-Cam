@@ -207,8 +207,9 @@ class RecordingService {
 
     console.log(`[Recording] ${recordingId} collected ${recording.frames.length} total frames`);
 
-    //generate output path
-    const outputPath = this.generateOutputPath(recordingId);
+    //generate output path with camera source information
+    const sourceId = recording.motionData.sourceId || 'default';
+    const outputPath = this.generateOutputPath(recordingId, sourceId);
     console.log(`[Recording] Output path: ${outputPath}`);
     console.log(`[Recording] Output directory exists:`, existsSync(path.dirname(outputPath)));
 
@@ -241,8 +242,9 @@ class RecordingService {
         duration: (Date.now() - recording.startTime) / 1000
       });
       
-      //enforce top 3 recordings for today
-      await this.enforceTop3RecordingsForToday();
+      //enforce top 3 recordings for today for this camera
+      const sourceId = recording.motionData.sourceId || 'default';
+      await this.enforceTop3RecordingsForToday(sourceId);
 
     } catch (error) {
       console.error(`[Recording] ${recordingId} encoding failed:`, error);
@@ -279,16 +281,17 @@ class RecordingService {
     return `${timestamp}_${random}`;
   }
 
-  generateOutputPath(recordingId) {
+  generateOutputPath(recordingId, sourceId = 'default') {
     const date = new Date();
     const dateFolder = date.toISOString().split('T')[0]; //YYYY-MM-DD
-    const filename = `motion_${recordingId}.mp4`;
+    const filename = `motion_${sourceId}_${recordingId}.mp4`; //include camera source in filename
     return path.join(this.config.outputDir, dateFolder, filename);
   }
 
   async saveMetadata(recordingId, recording, videoPath) {
     const metadata = {
       id: recordingId,
+      sourceId: recording.motionData.sourceId || 'default', //camera identifier for multi-camera support
       videoPath: videoPath,
       startTime: new Date(recording.startTime).toISOString(),
       endTime: new Date().toISOString(),
@@ -352,9 +355,9 @@ class RecordingService {
     return deletionResults;
   }
 
-  //enforce top 3 recordings per day based on movement intensity
-  async enforceTop3RecordingsForToday() {
-    console.log('[Recording] Enforcing top 3 recordings for today based on movement');
+  //enforce top 3 recordings per day per camera based on movement intensity
+  async enforceTop3RecordingsForToday(sourceId = 'default') {
+    console.log(`[Recording] Enforcing top 3 recordings for today for camera: ${sourceId}`);
     
     try {
       //get today's date folder
@@ -367,11 +370,12 @@ class RecordingService {
         return;
       }
       
-      //get all video files from today
+      //get all video files from today for this specific camera
       const files = await fs.readdir(todayDir);
-      const videoFiles = files.filter(file => file.endsWith('.mp4'));
+      const allVideoFiles = files.filter(file => file.endsWith('.mp4'));
+      const videoFiles = allVideoFiles.filter(file => file.includes(`motion_${sourceId}_`));
       
-      console.log(`[Recording] Found ${videoFiles.length} recordings for today`);
+      console.log(`[Recording] Found ${videoFiles.length} recordings for camera ${sourceId} today (${allVideoFiles.length} total)`);
       
       if (videoFiles.length <= 3) {
         console.log('[Recording] 3 or fewer recordings, no cleanup needed');
