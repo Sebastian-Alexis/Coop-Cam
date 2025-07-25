@@ -54,14 +54,12 @@ app.use(cookieParser());
 // Serve static files
 createStaticFilesMiddleware(app);
 
-// Create MJPEG proxy instance (legacy - for existing services)
-const mjpegProxy = new MjpegProxy(DROIDCAM_URL, {
-  disableAutoConnect: process.env.NODE_ENV === 'test'
-});
-
 // Create stream manager for multi-stream support
 const streamManager = createStreamManager({ config });
 console.log('[Server] Stream manager created with', config.streamSources.length, 'sources');
+
+// Get the default proxy from StreamManager for services that need it
+const mjpegProxy = streamManager.getDefaultProxy();
 
 // Create shared event emitter for services
 const eventEmitter = new EventEmitter();

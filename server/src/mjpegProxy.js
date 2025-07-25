@@ -318,6 +318,12 @@ class MjpegProxy extends EventEmitter {
   }
 
   addClient(clientId, res, fps = null) {
+    // Connect to source if this is the first client and we're not connected
+    if (this.clients.size === 0 && !this.isConnected && !this.sourceConnection) {
+      console.log(`[Proxy ${this.sourceId}] First client connecting, establishing source connection`);
+      this.connect();
+    }
+    
     // Parse FPS from client ID if provided (format: timestamp-random-fps15)
     let targetFps = fps;
     if (!targetFps && clientId.includes('-fps')) {

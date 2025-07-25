@@ -482,7 +482,7 @@
 
     .retro-bottom-bar {
       display: grid;
-      grid-template-columns: 30.6% 23.3% 19.9% 26.2%;
+      grid-template-columns: 27% 21% 21% 12% 19%;
       height: 71px;
       font-family: 'Jersey 25', serif;
       font-weight: 400;
@@ -522,6 +522,9 @@
       font-size: 42px;
       line-height: 1em;
       font-family: 'Jersey 25', serif;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
       font-weight: 400;
       letter-spacing: -0.02em;
     }
@@ -572,7 +575,7 @@
     @media (max-width: 768px) {
       .retro-bottom-bar {
         grid-template-columns: 1fr;
-        grid-template-rows: repeat(4, 71px);
+        grid-template-rows: repeat(5, 71px);
         height: auto;
         gap: 0;
       }
@@ -719,33 +722,31 @@
               <span class="retro-text-large" id="currentTime">11:47:23 pst</span>
             </div>
 
-            <!-- Section 4: Viewer Stats -->
+            <!-- Section 4: Compact Viewer Count -->
             <div class="retro-section">
-              <span class="retro-text-large">
-                <span id="viewerCount">1</span> <span id="viewerText">viewer</span>
+              <span class="retro-text-large" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <!-- Eye icon for viewers (enlarged) -->
+                <svg width="38" height="38" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="#8C3F27"/>
+                </svg>
+                <span id="viewerCount">1</span>
               </span>
             </div>
 
-            <!-- Section 5: Weather -->
-            <div class="retro-section retro-section-weather">
-              <!-- Icon + Temperature (Left) -->
-              <div class="weather-left">
-                <div class="weather-icon" id="weatherIcon">
+            <!-- Section 5: Weather (Compact) -->
+            <div class="retro-section" id="weatherSection">
+              <span class="retro-text-large">
+                <div class="weather-icon" id="weatherIcon" style="display: inline-block; margin-right: 8px; vertical-align: middle;">
                   <!-- Default cloud icon (will be replaced with dynamic weather icon) -->
-                  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M38 18C37.7 12.6 33.2 8 28 8C24.5 8 21.5 10.1 20 13.2C18.9 12.4 17.5 12 16 12C12.7 12 10 14.7 10 18C6.7 18 4 20.7 4 24C4 27.3 6.7 30 10 30H36C39.3 30 42 27.3 42 24C42 21.8 40.9 19.8 39.2 18.6L38 18Z" 
                           stroke="#8C3F27" stroke-width="4" fill="none"/>
                   </svg>
                 </div>
-                <div class="retro-text-large" id="weatherTemp">98°</div>
-              </div>
-              
-              <!-- Weather Description (Right) -->
-              <div class="weather-desc-right">
-                <div class="retro-text-small" id="weatherDesc">Patchy Drizzle then Partly Sunny</div>
-              </div>
-
-              <!-- Hidden weather content for API integration -->
+                <span id="weatherTemp">98°</span>
+              </span>
+              <!-- Hidden elements for JavaScript compatibility -->
+              <div id="weatherDesc" style="display: none;">Patchy Drizzle then Partly Sunny</div>
               <div id="weatherContent" class="sr-only">
                 <!-- Loading skeleton -->
                 <div class="w-8 h-8 bg-base-300 rounded-full animate-pulse"></div>
@@ -1402,8 +1403,10 @@
     //handle stats update from batch or individual call
     function handleStatsUpdate(data) {
       const count = data.clientCount || 0;
-      document.getElementById('viewerCount').textContent = count;
-      document.getElementById('viewerText').textContent = count === 1 ? 'viewer' : 'viewers';
+      const viewerCountElement = document.getElementById('viewerCount');
+      if (viewerCountElement) {
+        viewerCountElement.textContent = count;
+      }
     }
     
     //update viewer count

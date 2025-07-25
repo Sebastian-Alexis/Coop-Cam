@@ -84,7 +84,7 @@ export const config = {
   DROIDCAM_PATH: '/video',
   
   // Server configuration
-  SERVER_PORT: parseInt(process.env.PORT || '3001', 10),
+  SERVER_PORT: parseInt(process.env.SERVER_PORT || '3001', 10),
   SERVER_HOST: process.env.SERVER_HOST || '0.0.0.0',
   
   // Frame interpolation configuration

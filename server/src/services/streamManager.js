@@ -21,38 +21,34 @@ export const createStreamManager = ({ config }) => {
 
   //get proxy for specific source (lazy initialization)
   function getProxy(sourceId) {
-    //if proxy already exists, return it
-    if (proxies.has(sourceId)) {
-      return proxies.get(sourceId);
-    }
-
-    //if requesting the default source and default proxy exists, return it
-    if (sourceId === defaultSource.id && proxies.has('default')) {
-      const defaultProxy = proxies.get('default');
-      //also store it under the sourceId for future lookups
-      proxies.set(sourceId, defaultProxy);
-      console.log(`[StreamManager] Reusing default proxy for source: ${sourceId}`);
-      return defaultProxy;
+    //always use canonical sourceId (resolve 'default' to actual default source id)
+    const canonicalSourceId = sourceId === 'default' ? defaultSource.id : sourceId;
+    
+    //if proxy already exists under canonical id, return it
+    if (proxies.has(canonicalSourceId)) {
+      console.log(`[StreamManager] Reusing existing proxy for source: ${canonicalSourceId}`);
+      return proxies.get(canonicalSourceId);
     }
 
     //find the source configuration
-    const sourceConfig = streamSources.find(s => s.id === sourceId);
+    const sourceConfig = streamSources.find(s => s.id === canonicalSourceId);
     if (!sourceConfig) {
       return null; // Source ID not found
     }
 
     //create new proxy instance (lazy initialization)
-    console.log(`[StreamManager] Creating proxy for source: ${sourceId} (${sourceConfig.url})`);
+    console.log(`[StreamManager] Creating proxy for source: ${canonicalSourceId} (${sourceConfig.url})`);
     const newProxy = new MjpegProxy(sourceConfig.url, {
       sourceId: sourceConfig.id,
-      sourceName: sourceConfig.name
+      sourceName: sourceConfig.name,
+      disableAutoConnect: true // Don't auto-connect during creation
     });
     
-    //store proxy instance
-    proxies.set(sourceId, newProxy);
+    //store proxy instance under canonical id only
+    proxies.set(canonicalSourceId, newProxy);
     
-    //start connection
-    newProxy.connect();
+    //only connect when first client connects
+    //newProxy.connect(); // Remove auto-connect
     
     return newProxy;
   }
