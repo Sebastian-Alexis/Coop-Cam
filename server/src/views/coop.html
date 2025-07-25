@@ -480,14 +480,27 @@
       --retro-shadow: rgba(55, 10, 0, 0.48);
     }
 
+    /* Container query setup for proportional scaling */
+    .unified-container {
+      container-type: inline-size;
+    }
+
     .retro-bottom-bar {
       display: grid;
       grid-template-columns: 27% 21% 21% 12% 19%;
+      /* Fallback for browsers without container query support */
       height: 71px;
       font-family: 'Jersey 25', serif;
       font-weight: 400;
       letter-spacing: -0.02em;
       border-top: 1px solid var(--retro-border);
+    }
+
+    /* Container query enhancement for modern browsers */
+    @supports (container-type: inline-size) {
+      .retro-bottom-bar {
+        height: 6cqw; /* 6% of container width for proportional scaling - slimmer profile */
+      }
     }
 
     .retro-section {
@@ -519,6 +532,7 @@
     }
 
     .retro-text-large {
+      /* Fallback for browsers without container query support */
       font-size: 42px;
       line-height: 1em;
       font-family: 'Jersey 25', serif;
@@ -530,11 +544,23 @@
     }
 
     .retro-text-small {
+      /* Fallback for browsers without container query support */
       font-size: 18px;
       line-height: 1em;
       font-family: 'Jersey 25', serif;
       font-weight: 400;
       letter-spacing: -0.02em;
+    }
+
+    /* Container query enhancement for modern browsers */
+    @supports (container-type: inline-size) {
+      .retro-text-large {
+        font-size: clamp(28px, 3.5cqw, 48px); /* Proportional scaling with readable bounds */
+      }
+
+      .retro-text-small {
+        font-size: clamp(14px, 1.5cqw, 24px); /* Proportional scaling with readable bounds */
+      }
     }
 
     .retro-section-interactive {
@@ -571,7 +597,7 @@
       justify-content: flex-end;
     }
 
-    /* Mobile responsive design */
+    /* Mobile responsive design - fallback for older browsers */
     @media (max-width: 768px) {
       .retro-bottom-bar {
         grid-template-columns: 1fr;
@@ -607,6 +633,26 @@
 
       .retro-text-small {
         font-size: 16px;
+      }
+    }
+
+    /* Container query responsive design for proportional scaling - modern browsers */
+    @supports (container-type: inline-size) {
+      @container (max-width: 600px) {
+        .retro-bottom-bar {
+          grid-template-columns: 1fr;
+          grid-template-rows: repeat(5, 6cqw); /* Proportional row height - slimmer profile */
+          height: auto;
+          gap: 0;
+        }
+
+        .retro-text-large {
+          font-size: clamp(24px, 2.8cqw, 36px); /* Mobile proportional scaling with bounds */
+        }
+
+        .retro-text-small {
+          font-size: clamp(12px, 1.2cqw, 20px); /* Mobile proportional scaling with bounds */
+        }
       }
     }
     
