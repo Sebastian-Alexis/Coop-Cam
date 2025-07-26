@@ -17,7 +17,7 @@ const RecordingState = {
 
 //main recording service
 class RecordingService {
-  constructor(mjpegProxy, eventEmitter) {
+  constructor(mjpegProxy, eventEmitter, sourceId = null) {
     console.log('[Recording] Initializing recording service...');
     console.log('[Recording] Config enabled:', config.recording.enabled);
     console.log('[Recording] Pre-buffer seconds:', config.recording.preBufferSeconds);
@@ -26,6 +26,9 @@ class RecordingService {
     this.config = config.recording;
     this.mjpegProxy = mjpegProxy;
     this.eventEmitter = eventEmitter;
+    this.cameraSourceId = sourceId || mjpegProxy.sourceId || 'default'; //camera identifier for filtering motion events
+    
+    console.log(`[Recording] Camera source ID: ${this.cameraSourceId}`);
     
     //state management
     this.state = RecordingState.IDLE;
@@ -71,13 +74,18 @@ class RecordingService {
     };
     this.mjpegProxy.on('frame', this.frameListener);
 
-    //subscribe to motion events
-    console.log('[Recording] Setting up motion event listener...');
+    //subscribe to motion events with camera-specific filtering
+    console.log(`[Recording] Setting up motion event listener for camera: ${this.cameraSourceId}...`);
     this.eventEmitter.on('motion', (data) => {
-      console.log('[Recording] Motion event listener triggered!');
+      //filter motion events by camera source
+      if (data.sourceId !== this.cameraSourceId) {
+        console.log(`[Recording] Ignoring motion event from camera '${data.sourceId}' (listening for '${this.cameraSourceId}')`);
+        return;
+      }
+      console.log(`[Recording] Motion event listener triggered for camera: ${this.cameraSourceId}`);
       this.handleMotionEvent(data);
     });
-    console.log('[Recording] Motion event listener registered successfully');
+    console.log(`[Recording] Motion event listener registered successfully for camera: ${this.cameraSourceId}`);
     console.log('[Recording] EventEmitter has', this.eventEmitter.listenerCount('motion'), 'motion listeners');
 
     //start cleanup timer for old recordings

@@ -1,6 +1,6 @@
 import os from 'os';
 import { config, DROIDCAM_URL } from './config.js';
-import app, { mjpegProxy, flashlightState } from './app.js';
+import app, { streamManager, flashlightState } from './app.js';
 
 // Server configuration
 const PORT = config.SERVER_PORT;
@@ -85,4 +85,4 @@ process.on('SIGINT', () => {
 });
 
 // Export for testing
-export { app, mjpegProxy, flashlightState };
+export { app, streamManager, flashlightState };

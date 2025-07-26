@@ -1,16 +1,16 @@
-//batch controller - orchestrates multiple API calls for mobile optimization
+//batch controller - orchestrates multiple API calls for mobile optimization with multi-camera support
 //factory function receives all services this complex endpoint depends on
 
 export const createBatchController = ({ 
-  mjpegProxy, 
+  streamManager, 
   weatherService, 
   flashlightState, 
-  recordingService, 
+  recordingServices, 
   thumbnailService, 
   config 
 }) => {
-  if (!mjpegProxy) {
-    throw new Error('BatchController: mjpegProxy dependency is required.');
+  if (!streamManager) {
+    throw new Error('BatchController: streamManager dependency is required.');
   }
   if (!weatherService) {
     throw new Error('BatchController: weatherService dependency is required.');
@@ -18,9 +18,9 @@ export const createBatchController = ({
   if (!flashlightState) {
     throw new Error('BatchController: flashlightState dependency is required.');
   }
-  // recordingService can be null if recording is disabled
-  // if (!recordingService) {
-  //   throw new Error('BatchController: recordingService dependency is required.');
+  // recordingServices can be null if recording is disabled
+  // if (!recordingServices) {
+  //   throw new Error('BatchController: recordingServices dependency is required.');
   // }
   if (!thumbnailService) {
     throw new Error('BatchController: thumbnailService dependency is required.');
@@ -66,11 +66,32 @@ export const createBatchController = ({
           }
           
           try {
-            //handle different endpoints
+            //handle different endpoints with multi-camera support
             let data;
+            const camera = request.camera || 'default'; //camera parameter for multi-camera support
+            
             switch (endpoint) {
               case '/api/stats':
-                data = mjpegProxy.getStats();
+                //get stats for specific camera or all cameras
+                if (camera && camera !== 'all') {
+                  const proxy = streamManager.getProxy(camera);
+                  if (proxy) {
+                    const stats = proxy.getStats();
+                    data = {
+                      camera: camera,
+                      ...stats
+                    };
+                  } else {
+                    data = { error: `Camera '${camera}' not found` };
+                  }
+                } else {
+                  //aggregate stats from all cameras
+                  const allStats = streamManager.getAllStats();
+                  data = {
+                    cameras: allStats,
+                    totalClients: Object.values(allStats).reduce((sum, stats) => sum + (stats.clientCount || 0), 0)
+                  };
+                }
                 break;
                 
               case '/api/weather':
@@ -95,13 +116,39 @@ export const createBatchController = ({
                 break;
                 
               case '/api/stream/status':
-                data = {
-                  isPaused: mjpegProxy.getPauseState().isPaused,
-                  pauseEndTime: mjpegProxy.getPauseState().pauseEndTime,
-                  remainingMs: mjpegProxy.getPauseState().pauseEndTime 
-                    ? Math.max(0, mjpegProxy.getPauseState().pauseEndTime - Date.now())
-                    : 0
-                };
+                //get stream status for specific camera or all cameras
+                if (camera && camera !== 'all') {
+                  const proxy = streamManager.getProxy(camera);
+                  if (proxy) {
+                    const pauseState = proxy.getPauseState ? proxy.getPauseState() : { isPaused: false, pauseEndTime: null };
+                    data = {
+                      camera: camera,
+                      isPaused: pauseState.isPaused,
+                      pauseEndTime: pauseState.pauseEndTime,
+                      remainingMs: pauseState.pauseEndTime 
+                        ? Math.max(0, pauseState.pauseEndTime - Date.now())
+                        : 0
+                    };
+                  } else {
+                    data = { error: `Camera '${camera}' not found` };
+                  }
+                } else {
+                  //get status for all cameras
+                  const allStats = streamManager.getAllStats();
+                  const cameraStatuses = {};
+                  Object.keys(allStats).forEach(sourceId => {
+                    const proxy = streamManager.getProxy(sourceId);
+                    const pauseState = proxy && proxy.getPauseState ? proxy.getPauseState() : { isPaused: false, pauseEndTime: null };
+                    cameraStatuses[sourceId] = {
+                      isPaused: pauseState.isPaused,
+                      pauseEndTime: pauseState.pauseEndTime,
+                      remainingMs: pauseState.pauseEndTime 
+                        ? Math.max(0, pauseState.pauseEndTime - Date.now())
+                        : 0
+                    };
+                  });
+                  data = { cameras: cameraStatuses };
+                }
                 break;
                 
               case '/api/flashlight/status':
@@ -109,51 +156,74 @@ export const createBatchController = ({
                 break;
                 
               case '/api/recordings/recent':
-                if (!recordingService) {
+                if (!recordingServices || recordingServices.size === 0) {
                   data = {
                     success: false,
                     error: 'Recording service is not enabled'
                   };
                 } else {
-                  const dateStr = new Date().toLocaleDateString('en-US', { 
-                    timeZone: 'America/Los_Angeles' 
-                  });
-                  const recordings = await recordingService.getRecordingsByDate(dateStr);
-                  const recordingsWithThumbnails = await Promise.all(
-                    recordings.map(async (recording) => {
-                      const thumbnailExists = await thumbnailService.thumbnailExists(recording.filename);
-                      return {
-                        ...recording,
-                        thumbnailUrl: thumbnailExists 
-                          ? `/api/recordings/thumbnail/${recording.filename}`
-                          : null
-                      };
-                    })
-                  );
+                  //get recordings for specific camera or all cameras
+                  const recordings = await thumbnailService.getRecentRecordings(config.recording.outputDir, 3, camera);
                   data = { 
                     success: true, 
-                    recordings: recordingsWithThumbnails,
-                    date: dateStr,
-                    timezone: 'America/Los_Angeles'
+                    recordings: recordings.map(rec => ({
+                      ...rec,
+                      thumbnailUrl: rec.thumbnailExists ? `/api/recordings/thumbnail/${encodeURIComponent(rec.filename)}` : null,
+                      videoUrl: `/api/recordings/video/${encodeURIComponent(rec.filename)}`
+                    })),
+                    camera: camera
                   };
                 }
                 break;
                 
               case '/api/droidcam-status':
-                const clients = mjpegProxy.getClients();
-                const clientList = Array.from(clients.entries()).map(([id, client]) => ({
-                  id: client.id.substring(0, 8),
-                  connectedAt: new Date(parseInt(id.split('-')[0])).toISOString(),
-                  frameCount: client.frameCount || 0,
-                  lastFrameTime: client.lastFrameTime ? new Date(client.lastFrameTime).toISOString() : null
-                }));
-                data = {
-                  isConnected: mjpegProxy.isConnected,
-                  sourceUrl: mjpegProxy.sourceUrl,
-                  clients: clientList,
-                  uptime: process.uptime(),
-                  memory: process.memoryUsage()
-                };
+                //get droidcam status for specific camera or all cameras
+                if (camera && camera !== 'all') {
+                  const proxy = streamManager.getProxy(camera);
+                  if (proxy) {
+                    const clients = proxy.getClients ? proxy.getClients() : new Map();
+                    const clientList = Array.from(clients.entries()).map(([id, client]) => ({
+                      id: client.id ? client.id.substring(0, 8) : id.substring(0, 8),
+                      connectedAt: new Date(parseInt(id.split('-')[0])).toISOString(),
+                      frameCount: client.frameCount || 0,
+                      lastFrameTime: client.lastFrameTime ? new Date(client.lastFrameTime).toISOString() : null
+                    }));
+                    data = {
+                      camera: camera,
+                      isConnected: proxy.isConnected,
+                      sourceUrl: proxy.sourceUrl,
+                      clients: clientList,
+                      uptime: process.uptime(),
+                      memory: process.memoryUsage()
+                    };
+                  } else {
+                    data = { error: `Camera '${camera}' not found` };
+                  }
+                } else {
+                  //aggregate from all cameras
+                  const allStats = streamManager.getAllStats();
+                  const cameraStatuses = {};
+                  Object.keys(allStats).forEach(sourceId => {
+                    const proxy = streamManager.getProxy(sourceId);
+                    const clients = proxy && proxy.getClients ? proxy.getClients() : new Map();
+                    const clientList = Array.from(clients.entries()).map(([id, client]) => ({
+                      id: client.id ? client.id.substring(0, 8) : id.substring(0, 8),
+                      connectedAt: new Date(parseInt(id.split('-')[0])).toISOString(),
+                      frameCount: client.frameCount || 0,
+                      lastFrameTime: client.lastFrameTime ? new Date(client.lastFrameTime).toISOString() : null
+                    }));
+                    cameraStatuses[sourceId] = {
+                      isConnected: proxy ? proxy.isConnected : false,
+                      sourceUrl: proxy ? proxy.sourceUrl : null,
+                      clients: clientList
+                    };
+                  });
+                  data = {
+                    cameras: cameraStatuses,
+                    uptime: process.uptime(),
+                    memory: process.memoryUsage()
+                  };
+                }
                 break;
                 
               default:

@@ -80,7 +80,7 @@ for (const streamSource of config.streamSources) {
 
   // Create recording service for this camera if enabled
   if (config.recording.enabled) {
-    const recordingService = new RecordingService(mjpegProxy, eventEmitter);
+    const recordingService = new RecordingService(mjpegProxy, eventEmitter, sourceId);
     recordingServices.set(sourceId, recordingService);
     console.log(`[Server] Recording service created for camera: ${sourceId}, starting...`);
     recordingService.start().catch(err => {

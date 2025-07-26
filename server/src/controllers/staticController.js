@@ -75,6 +75,36 @@ export const createStaticController = ({ config }) => {
     });
   };
 
+  //serve coop CSS file
+  const serveCoopCSS = (req, res) => {
+    const filePath = path.join(__dirname, '..', 'views', 'css', 'coop.css');
+    res.set({
+      'Content-Type': 'text/css',
+      'Cache-Control': 'public, max-age=3600'
+    });
+    res.sendFile(filePath, (err) => {
+      if (err) {
+        console.error('Error serving coop.css:', err);
+        res.status(404).send('File not found');
+      }
+    });
+  };
+
+  //serve coop JS file
+  const serveCoopJS = (req, res) => {
+    const filePath = path.join(__dirname, '..', 'views', 'js', 'coop.js');
+    res.set({
+      'Content-Type': 'application/javascript',
+      'Cache-Control': 'public, max-age=3600'
+    });
+    res.sendFile(filePath, (err) => {
+      if (err) {
+        console.error('Error serving coop.js:', err);
+        res.status(404).send('File not found');
+      }
+    });
+  };
+
   return {
     serveHomePage,
     serveCoopPage,
@@ -82,6 +112,8 @@ export const createStaticController = ({ config }) => {
     serveCoop2Page,
     serveAboutPage,
     serveMobileCSS,
-    serveGesturesJS
+    serveGesturesJS,
+    serveCoopCSS,
+    serveCoopJS
   };
 };

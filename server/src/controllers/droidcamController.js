@@ -1,66 +1,136 @@
-//droidcam controller - diagnostic information and connectivity status
+//droidcam controller - diagnostic information and connectivity status with multi-camera support
 //factory function receives dependencies for clean testing and modularity
 
-import { DROIDCAM_URL } from '../config.js';
-
-export const createDroidcamController = ({ mjpegProxy, config }) => {
-  if (!mjpegProxy) {
-    throw new Error('DroidcamController: mjpegProxy dependency is required.');
+export const createDroidcamController = ({ streamManager, config }) => {
+  if (!streamManager) {
+    throw new Error('DroidcamController: streamManager dependency is required.');
   }
   if (!config) {
     throw new Error('DroidcamController: config dependency is required.');
   }
 
-  //get comprehensive diagnostic status for DroidCam and proxy
+  //get comprehensive diagnostic status for all cameras or specific camera
   const getStatus = async (req, res) => {
     try {
-      const stats = mjpegProxy.getStats();
-      const droidcamUrl = `http://${config.DROIDCAM_IP}:${config.DROIDCAM_PORT}`;
+      const sourceId = req.query.camera; //optional camera parameter
       
-      //try to check if DroidCam is reachable
-      let droidcamReachable = false;
-      let droidcamError = null;
-      
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
+      if (sourceId) {
+        //get status for specific camera
+        const proxy = streamManager.getProxy(sourceId);
+        if (!proxy) {
+          return res.status(404).json({ error: `Camera '${sourceId}' not found` });
+        }
         
-        const response = await fetch(`${droidcamUrl}/`, { 
-          signal: controller.signal,
-          method: 'GET'
+        const sourceConfig = streamManager.getSourceConfig(sourceId);
+        const stats = proxy.getStats();
+        
+        //try to check if camera is reachable
+        let cameraReachable = false;
+        let cameraError = null;
+        
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 5000);
+          
+          const baseUrl = sourceConfig.url.replace('/video', '');
+          const response = await fetch(`${baseUrl}/`, { 
+            signal: controller.signal,
+            method: 'GET'
+          });
+          
+          clearTimeout(timeout);
+          cameraReachable = response.ok;
+          
+          if (!response.ok) {
+            cameraError = `HTTP ${response.status}`;
+          }
+        } catch (error) {
+          cameraError = error.message;
+        }
+        
+        res.json({
+          camera: {
+            id: sourceId,
+            name: sourceConfig.name,
+            url: sourceConfig.url,
+            baseUrl: sourceConfig.url.replace('/video', ''),
+            reachable: cameraReachable,
+            error: cameraError
+          },
+          proxy: {
+            connected: stats.isConnected,
+            viewerCount: stats.clientCount,
+            clientIds: Array.from(proxy.clients?.keys() || []),
+            lastFrameTime: proxy.lastFrameTime || null,
+            frameCount: stats.frameCount || 0
+          },
+          server: {
+            uptime: process.uptime(),
+            nodeVersion: process.version,
+            environment: process.env.NODE_ENV || 'development'
+          }
         });
+      } else {
+        //get status for all cameras
+        const allStats = streamManager.getAllStats();
+        const availableSources = streamManager.listAvailableSources();
+        const cameraStatuses = {};
         
-        clearTimeout(timeout);
-        droidcamReachable = response.ok;
-        
-        if (!response.ok) {
-          droidcamError = `HTTP ${response.status}`;
+        //check reachability for each camera
+        for (const source of availableSources) {
+          let cameraReachable = false;
+          let cameraError = null;
+          
+          try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000);
+            
+            const baseUrl = source.url;
+            const response = await fetch(`${baseUrl}/`, { 
+              signal: controller.signal,
+              method: 'GET'
+            });
+            
+            clearTimeout(timeout);
+            cameraReachable = response.ok;
+            
+            if (!response.ok) {
+              cameraError = `HTTP ${response.status}`;
+            }
+          } catch (error) {
+            cameraError = error.message;
+          }
+          
+          const stats = allStats[source.id] || {};
+          cameraStatuses[source.id] = {
+            camera: {
+              id: source.id,
+              name: source.name,
+              url: `${source.url}/video`,
+              baseUrl: source.url,
+              isDefault: source.isDefault,
+              reachable: cameraReachable,
+              error: cameraError
+            },
+            proxy: {
+              connected: stats.isConnected || false,
+              viewerCount: stats.clientCount || 0,
+              frameCount: stats.frameCount || 0,
+              lastFrameTime: stats.lastFrameTime || null
+            }
+          };
         }
-      } catch (error) {
-        droidcamError = error.message;
+        
+        res.json({
+          cameras: cameraStatuses,
+          server: {
+            uptime: process.uptime(),
+            nodeVersion: process.version,
+            environment: process.env.NODE_ENV || 'development',
+            totalCameras: availableSources.length
+          }
+        });
       }
-      
-      res.json({
-        droidcam: {
-          ip: config.DROIDCAM_IP,
-          port: config.DROIDCAM_PORT,
-          url: droidcamUrl,
-          videoUrl: DROIDCAM_URL,
-          reachable: droidcamReachable,
-          error: droidcamError
-        },
-        proxy: {
-          connected: stats.isConnected,
-          viewerCount: stats.clientCount,
-          clientIds: Array.from(mjpegProxy.clients.keys()),
-          lastFrameTime: mjpegProxy.lastFrameTime || null
-        },
-        server: {
-          uptime: process.uptime(),
-          nodeVersion: process.version,
-          environment: process.env.NODE_ENV || 'development'
-        }
-      });
     } catch (error) {
       console.error('[DroidCam Status] Error:', error);
       res.status(500).json({ 
