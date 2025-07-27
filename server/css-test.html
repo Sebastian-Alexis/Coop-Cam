@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="caramellatte">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jersey+25&display=swap" rel="stylesheet">
+    <link href="/css/coop.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+    <div class="min-h-screen bg-base-100 p-8">
+        <h1 class="text-2xl font-bold mb-4">CSS Test Page</h1>
+        
+        <!-- Test DaisyUI caramellatte theme -->
+        <div class="card bg-base-200 shadow-xl mb-4">
+            <div class="card-body">
+                <h2 class="card-title">DaisyUI Theme Test</h2>
+                <p>This should show the caramellatte theme colors (warm browns/creams)</p>
+                <div class="card-actions justify-end">
+                    <button class="btn btn-primary">Primary Button</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Test retro bottom bar styling -->
+        <div class="unified-container w-full bg-base-200 rounded-2xl overflow-hidden shadow-lg border border-base-300 mb-4">
+            <div class="retro-bottom-bar w-full">
+                <div class="retro-section">
+                    <span class="retro-text-large">Test Section 1</span>
+                </div>
+                <div class="retro-section">
+                    <span class="retro-text-large">Test Section 2</span>
+                </div>
+                <div class="retro-section">
+                    <span class="retro-text-large">12:34:56 PST</span>
+                </div>
+                <div class="retro-section">
+                    <span class="retro-text-large">👁 5</span>
+                </div>
+                <div class="retro-section">
+                    <span class="retro-text-large">🌤 75°</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Test custom CSS classes -->
+        <div class="hover-lift bg-base-100 p-4 rounded-lg shadow">
+            <p>This should have hover lift effect</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -2480,3 +2480,61 @@
     window.cleanupTimers = cleanupAllTimers;
     window.getTimerCount = () => TimerManager.getActiveCount();
     window.listTimers = () => TimerManager.listActive();
+    
+    //initialize lucide icons after DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+    });
+    
+    //global function for flashlight overlay button
+    window.toggleFlashlightOverlay = async function() {
+      try {
+        //get current flashlight status first
+        const statusResponse = await fetch('/api/flashlight/status', {
+          headers: { 'Accept': 'application/json' }
+        });
+        const statusData = await statusResponse.json();
+        
+        //toggle based on current state
+        const endpoint = statusData.isOn ? '/api/flashlight/off' : '/api/flashlight/on';
+        const response = await fetch(endpoint, {
+          method: 'PUT',
+          headers: { 'Accept': 'application/json' }
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+          console.log('Flashlight toggled:', data.message);
+          //update existing flashlight status if elements exist
+          checkFlashlightStatus();
+        } else {
+          console.error('Flashlight toggle failed:', data.message);
+        }
+      } catch (error) {
+        console.error('Error toggling flashlight:', error);
+      }
+    };
+    
+    //global function to open password modal for stream pause
+    window.openPasswordModal = function() {
+      const modal = document.getElementById('passwordModal');
+      const passwordInput = document.getElementById('passwordInput');
+      
+      //clear previous input
+      if (passwordInput) {
+        passwordInput.value = '';
+      }
+      
+      //show modal
+      if (modal) {
+        modal.showModal();
+        //focus input after a brief delay
+        TimerManager.setTimeout(() => {
+          if (passwordInput) {
+            passwordInput.focus();
+          }
+        }, 100, 'focusPasswordInput');
+      }
+    };

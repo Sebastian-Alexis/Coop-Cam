@@ -8,6 +8,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/js/requestQueue.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Jersey+25&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <link href="/mobile.css" rel="stylesheet" type="text/css" />
   <link href="/css/coop.css" rel="stylesheet" type="text/css" />
 </head>
@@ -102,6 +103,27 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
               </svg>
             </button>
+            <!-- Stream overlay icons -->
+            <div class="stream-overlay-icons">
+              <button 
+                id="streamFlashlightBtn"
+                class="overlay-icon-btn"
+                onclick="toggleFlashlightOverlay()"
+                title="Toggle flashlight"
+                aria-label="Toggle flashlight"
+              >
+                <i data-lucide="flashlight"></i>
+              </button>
+              <button 
+                id="streamPauseBtn"
+                class="overlay-icon-btn"
+                onclick="openPasswordModal()"
+                title="Pause stream"
+                aria-label="Pause stream for 5 minutes"
+              >
+                <i data-lucide="pause"></i>
+              </button>
+            </div>
           </div>
             
             <!-- Retro Bottom Bar Layout -->
