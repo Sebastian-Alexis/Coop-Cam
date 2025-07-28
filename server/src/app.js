@@ -2,7 +2,8 @@ import express from 'express';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import path from 'path';
-import fs from 'fs';
+import fs from 'fs/promises';
+import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { EventEmitter } from 'events';
 import crypto from 'crypto';
@@ -145,13 +146,128 @@ eventEmitter.on('recording-complete', async (data) => {
       console.error('[Thumbnail] Failed to generate thumbnail:', error);
     }
   }
+  
+  // Check if this recording has high motion and send notification
+  if (data.motion && data.motion.intensity) {
+    await checkAndNotifyHighMotion(data);
+  }
 });
 
 eventEmitter.on('recording-failed', (data) => {
   console.log('[Recording] Failed:', data);
 });
 
+//check if recording has high motion and notify users
+async function checkAndNotifyHighMotion(recordingData) {
+  try {
+    const { path: recordingPath, motion, sourceId = 'default' } = recordingData;
+    
+    if (!motion || !motion.intensity) {
+      console.log('[Notification] No motion data available, skipping notification check');
+      return;
+    }
+    
+    const motionIntensity = parseFloat(motion.intensity);
+    console.log(`[Notification] Checking motion intensity: ${motionIntensity}% for camera ${sourceId}`);
+    
+    //get today's recordings to determine if this is top 3 worthy
+    const today = new Date().toISOString().split('T')[0];
+    const todayDir = path.join(config.recording.outputDir, today);
+    
+    if (!existsSync(todayDir)) {
+      console.log('[Notification] No recordings directory for today, treating as high motion');
+      await sendHighMotionNotification(recordingData, motionIntensity, 1);
+      return;
+    }
+    
+    //get all recordings for this camera today
+    const files = await fs.readdir(todayDir);
+    const cameraRecordings = files.filter(file => 
+      file.endsWith('.mp4') && file.includes(`motion_${sourceId}_`)
+    );
+    
+    //load motion data for existing recordings
+    const recordingsWithMotion = [];
+    for (const videoFile of cameraRecordings) {
+      const videoPath = path.join(todayDir, videoFile);
+      const metadataPath = videoPath.replace('.mp4', '.json');
+      
+      if (existsSync(metadataPath)) {
+        try {
+          const metadataContent = await fs.readFile(metadataPath, 'utf8');
+          const metadata = JSON.parse(metadataContent);
+          
+          recordingsWithMotion.push({
+            videoFile,
+            movement: metadata.motion?.difference || 0,
+            intensity: metadata.motion?.intensity || 0
+          });
+        } catch (error) {
+          console.error(`[Notification] Error reading metadata for ${videoFile}:`, error);
+        }
+      }
+    }
+    
+    //sort by movement intensity (highest first)
+    recordingsWithMotion.sort((a, b) => parseFloat(b.intensity) - parseFloat(a.intensity));
+    
+    //determine rank of current recording
+    const currentRank = recordingsWithMotion.findIndex(rec => 
+      parseFloat(rec.intensity) <= motionIntensity
+    ) + 1; //1-based ranking
+    
+    console.log(`[Notification] Recording ranks #${currentRank} out of ${recordingsWithMotion.length + 1} recordings today`);
+    
+    //notify if this is top 3
+    if (currentRank <= 3) {
+      await sendHighMotionNotification(recordingData, motionIntensity, currentRank);
+    } else {
+      console.log(`[Notification] Motion intensity ${motionIntensity}% is not in top 3, no notification sent`);
+    }
+    
+  } catch (error) {
+    console.error('[Notification] Error checking high motion:', error);
+  }
+}
 
+//send high motion notification to all connected users
+async function sendHighMotionNotification(recordingData, motionIntensity, rank) {
+  try {
+    const { id, sourceId = 'default', path: recordingPath } = recordingData;
+    const filename = path.basename(recordingPath);
+    
+    const notification = {
+      type: 'high-motion-alert',
+      timestamp: Date.now(),
+      data: {
+        recordingId: id,
+        filename: filename,
+        sourceId: sourceId,
+        motionIntensity: `${motionIntensity}%`,
+        rank: rank,
+        message: `High motion detected! Recording "${filename}" ranks #${rank} for today with ${motionIntensity}% motion intensity.`
+      }
+    };
+    
+    console.log(`[Notification] Sending high motion alert: ${notification.data.message}`);
+    
+    //broadcast to all SSE clients
+    sseService.broadcast(notification);
+    
+    //optionally add to motion events for history
+    motionEventsService.addEvent({
+      type: 'high-motion-alert',
+      recordingId: id,
+      filename: filename,
+      sourceId: sourceId,
+      motionIntensity: motionIntensity,
+      rank: rank
+    });
+    
+  } catch (error) {
+    console.error('[Notification] Error sending high motion notification:', error);
+  }
+}
 
 // Connection management middleware for mobile
 app.use(createConnectionManagementMiddleware());

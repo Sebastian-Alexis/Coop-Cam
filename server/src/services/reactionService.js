@@ -41,8 +41,8 @@ class ReactionService {
 
   //get reactions file path for a recording
   getReactionsFilePath(recordingFilename) {
-    //extract date from filename (format: motion_YYYY-MM-DDTHH-MM-SS-sss_random.mp4)
-    const match = recordingFilename.match(/motion_(\d{4}-\d{2}-\d{2})/);
+    //extract date from filename (format: motion_[cameraId_]YYYY-MM-DDTHH-MM-SS-sss_random.mp4)
+    const match = recordingFilename.match(/motion_(?:[^_]+_)?(\d{4}-\d{2}-\d{2})/);
     if (!match) {
       throw new Error('Invalid recording filename format');
     }

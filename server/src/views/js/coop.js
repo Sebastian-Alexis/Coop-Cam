@@ -695,6 +695,9 @@
       //preserve timer functionality for potential future use
       const timerText = document.getElementById('timerText');
       
+      //update overlay UI
+      updateOverlayFlashlightUI(isOn, remainingSeconds);
+      
       if (isOn) {        
         //update timer for screen readers (if timer element exists)
         if (timerText) {
@@ -725,6 +728,44 @@
       const timerText = document.getElementById('timerText');
       const minutes = Math.floor(remainingSeconds / 60);
       const seconds = Math.floor(remainingSeconds % 60);
+      
+      //update legacy timer if it exists
+      if (timerText) {
+        timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      }
+      
+      //update overlay timer
+      updateOverlayTimerDisplay(remainingSeconds);
+    }
+
+    //update overlay flashlight UI
+    function updateOverlayFlashlightUI(isOn, remainingSeconds) {
+      const button = document.getElementById('streamFlashlightBtn');
+      const timerText = document.getElementById('overlayTimerText');
+      
+      if (!button || !timerText) return;
+      
+      if (isOn && remainingSeconds > 0) {
+        //show timer and activate button
+        button.classList.add('timer-active', 'flashlight-on');
+        button.title = `Flashlight on (${Math.floor(remainingSeconds / 60)}:${(remainingSeconds % 60).toString().padStart(2, '0')} remaining)`;
+        timerText.classList.remove('hidden');
+        updateOverlayTimerDisplay(remainingSeconds);
+      } else {
+        //hide timer and deactivate button
+        button.classList.remove('timer-active', 'flashlight-on');
+        button.title = 'Turn on flashlight (5 min auto-off)';
+        timerText.classList.add('hidden');
+      }
+    }
+    
+    //update overlay timer display
+    function updateOverlayTimerDisplay(remainingSeconds) {
+      const timerText = document.getElementById('overlayTimerText');
+      if (!timerText) return;
+      
+      const minutes = Math.floor(remainingSeconds / 60);
+      const seconds = remainingSeconds % 60;
       timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
     }
 
@@ -2087,6 +2128,9 @@
         if (!document.hidden) {
           showMotionToast(data);
         }
+      } else {
+        // Handle other event types (like high motion alerts)
+        NotificationManager.handleSSEMessage(data);
       }
     }
     
@@ -2486,6 +2530,9 @@
       if (typeof lucide !== 'undefined') {
         lucide.createIcons();
       }
+      
+      //initialize notification manager
+      NotificationManager.init();
     });
     
     //global function for flashlight overlay button
@@ -2497,16 +2544,24 @@
         });
         const statusData = await statusResponse.json();
         
-        //toggle based on current state
-        const endpoint = statusData.isOn ? '/api/flashlight/off' : '/api/flashlight/on';
-        const response = await fetch(endpoint, {
+        //flashlight can only be turned on (auto-off after 5 minutes)
+        //if already on, do nothing or show message
+        if (statusData.isOn) {
+          console.log('Flashlight is already on, remaining time:', statusData.remainingSeconds);
+          return;
+        }
+        
+        //turn on flashlight
+        const response = await fetch('/api/flashlight/on', {
           method: 'PUT',
           headers: { 'Accept': 'application/json' }
         });
         
         const data = await response.json();
         if (data.success) {
-          console.log('Flashlight toggled:', data.message);
+          console.log('Flashlight turned on:', data.message);
+          //update overlay UI immediately
+          updateOverlayFlashlightUI(true, data.remainingSeconds || 300);
           //update existing flashlight status if elements exist
           checkFlashlightStatus();
         } else {
@@ -2514,6 +2569,131 @@
         }
       } catch (error) {
         console.error('Error toggling flashlight:', error);
+      }
+    };
+    
+    //notification system state
+    const NotificationManager = {
+      isSupported: 'Notification' in window,
+      permission: null,
+      isEnabled: false,
+      
+      init() {
+        this.permission = this.isSupported ? Notification.permission : 'denied';
+        this.isEnabled = this.permission === 'granted';
+        this.updateBellStatus();
+        
+        //listen for high motion alerts from SSE
+        this.setupSSEListener();
+      },
+      
+      updateBellStatus() {
+        const bellStatus = document.getElementById('notificationStatus');
+        if (!bellStatus) return;
+        
+        bellStatus.classList.remove('bg-success', 'bg-warning', 'bg-error');
+        
+        if (this.permission === 'granted') {
+          bellStatus.classList.add('bg-success');
+          bellStatus.classList.remove('hidden');
+        } else if (this.permission === 'denied') {
+          bellStatus.classList.add('bg-error');
+          bellStatus.classList.remove('hidden');
+        } else {
+          bellStatus.classList.add('bg-warning');
+          bellStatus.classList.remove('hidden');
+        }
+      },
+      
+      async requestPermission() {
+        if (!this.isSupported) {
+          throw new Error('Notifications not supported in this browser');
+        }
+        
+        const permission = await Notification.requestPermission();
+        this.permission = permission;
+        this.isEnabled = permission === 'granted';
+        this.updateBellStatus();
+        
+        return permission;
+      },
+      
+      showNotification(title, options = {}) {
+        if (!this.isEnabled) return null;
+        
+        const defaultOptions = {
+          icon: '/favicon.ico',
+          badge: '/favicon.ico',
+          tag: 'coop-motion',
+          requireInteraction: false,
+          ...options
+        };
+        
+        return new Notification(title, defaultOptions);
+      },
+      
+      setupSSEListener() {
+        //will be set up when SSE connects
+        console.log('[Notifications] SSE listener ready for high motion alerts');
+      },
+      
+      handleSSEMessage(data) {
+        //handle high motion alerts from SSE
+        if (data.type === 'high-motion-alert' && this.isEnabled) {
+          this.showNotification('High Motion Detected! 🐔', {
+            body: data.data.message,
+            icon: '/favicon.ico',
+            tag: 'high-motion'
+          });
+        }
+      }
+    };
+    
+    //global notification functions
+    window.openNotificationModal = function() {
+      const modal = document.getElementById('notificationModal');
+      if (modal) {
+        modal.showModal();
+      }
+    };
+    
+    window.closeNotificationModal = function() {
+      const modal = document.getElementById('notificationModal');
+      if (modal) {
+        modal.close();
+      }
+    };
+    
+    window.enableNotifications = async function() {
+      try {
+        const permission = await NotificationManager.requestPermission();
+        
+        if (permission === 'granted') {
+          //send demo notification
+          const demoNotification = NotificationManager.showNotification('Thank you! 🎉', {
+            body: 'Motion notifications will look like this',
+            tag: 'demo-notification'
+          });
+          
+          //auto-close demo notification after 5 seconds
+          if (demoNotification) {
+            TimerManager.setTimeout(() => {
+              demoNotification.close();
+            }, 5000, 'closeDemoNotification');
+          }
+          
+          //close modal
+          window.closeNotificationModal();
+          
+          console.log('[Notifications] Successfully enabled motion notifications');
+        } else if (permission === 'denied') {
+          alert('Notifications were blocked. You can enable them in your browser settings.');
+        } else {
+          alert('Notification permission was not granted.');
+        }
+      } catch (error) {
+        console.error('[Notifications] Error enabling notifications:', error);
+        alert('Failed to enable notifications: ' + error.message);
       }
     };
     
