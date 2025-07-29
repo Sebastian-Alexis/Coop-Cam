@@ -35,6 +35,10 @@ class RecordingService {
     this.activeRecordings = new Map();
     this.recordingCount = 0;
     
+    //thumbnail coordination tracking to prevent race conditions
+    this.thumbnailsInProgress = new Set(); //tracks recording IDs with active thumbnail generation
+    this.deferredDeletions = new Map(); //tracks recordings queued for deletion after thumbnail completion
+    
     //services
     this.circularBuffer = new CircularBufferService(
       this.config.preBufferSeconds,
@@ -242,16 +246,17 @@ class RecordingService {
       console.log(`[Recording] ${recordingId} saved successfully to ${outputPath}`);
       console.log(`[Recording] File exists:`, existsSync(outputPath));
       
-      //emit completion event
+      //emit completion event with sourceId for coordination
+      const sourceId = recording.motionData.sourceId || this.cameraSourceId || 'default';
       this.eventEmitter.emit('recording-complete', {
         id: recordingId,
         path: outputPath,
         frames: recording.frames.length,
-        duration: (Date.now() - recording.startTime) / 1000
+        duration: (Date.now() - recording.startTime) / 1000,
+        sourceId: sourceId
       });
       
       //enforce top 3 recordings for today for this camera
-      const sourceId = recording.motionData.sourceId || 'default';
       await this.enforceTop3RecordingsForToday(sourceId);
 
     } catch (error) {
@@ -428,8 +433,20 @@ class RecordingService {
       const recordingsToDelete = recordingsWithMovement.slice(3);
       
       for (const recording of recordingsToDelete) {
+        //extract recording ID from filename to check for active thumbnail generation
+        const recordingIdMatch = recording.videoFile.match(/motion_[^_]+_(.+)\.mp4$/);
+        const recordingId = recordingIdMatch ? recordingIdMatch[1] : null;
+        
         console.log(`[Recording] Deleting low-movement recording: ${recording.videoFile} (${(recording.movement * 100).toFixed(2)}%)`);
-        await this.deleteRecording(recording.videoPath);
+        
+        //check if thumbnail generation is in progress for this recording
+        if (recordingId && this.isThumbnailInProgress(recordingId)) {
+          //defer deletion until thumbnail generation completes
+          this.deferDeletion(recordingId, recording.videoPath);
+        } else {
+          //safe to delete immediately
+          await this.deleteRecording(recording.videoPath);
+        }
       }
       
       console.log(`[Recording] Enforcement complete. Kept top 3 recordings, deleted ${recordingsToDelete.length}`);
@@ -491,6 +508,44 @@ class RecordingService {
         maxConcurrent: this.config.maxConcurrent
       }
     };
+  }
+
+  //thumbnail coordination methods to prevent race conditions
+  markThumbnailInProgress(recordingId) {
+    this.thumbnailsInProgress.add(recordingId);
+    console.log(`[Recording] Thumbnail generation started for ${recordingId}`);
+  }
+
+  markThumbnailComplete(recordingId) {
+    this.thumbnailsInProgress.delete(recordingId);
+    console.log(`[Recording] Thumbnail generation completed for ${recordingId}`);
+    
+    //check for deferred deletions
+    if (this.deferredDeletions.has(recordingId)) {
+      const videoPath = this.deferredDeletions.get(recordingId);
+      this.deferredDeletions.delete(recordingId);
+      console.log(`[Recording] Processing deferred deletion for ${recordingId}`);
+      
+      //perform the deferred deletion
+      setTimeout(async () => {
+        try {
+          await this.deleteRecording(videoPath);
+          console.log(`[Recording] Deferred deletion completed for ${recordingId}`);
+        } catch (error) {
+          console.error(`[Recording] Deferred deletion failed for ${recordingId}:`, error);
+        }
+      }, 100); //small delay to ensure thumbnail generation is fully complete
+    }
+  }
+
+  isThumbnailInProgress(recordingId) {
+    return this.thumbnailsInProgress.has(recordingId);
+  }
+
+  //add recording to deferred deletion queue
+  deferDeletion(recordingId, videoPath) {
+    this.deferredDeletions.set(recordingId, videoPath);
+    console.log(`[Recording] Deletion deferred for ${recordingId} (thumbnail in progress)`);
   }
 }
 

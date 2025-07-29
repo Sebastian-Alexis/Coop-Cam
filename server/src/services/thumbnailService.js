@@ -15,13 +15,18 @@ class ThumbnailService {
       seekTime = 3, //capture frame at 3 seconds (during motion)
       width = 320,
       height = 240,
-      quality = 2 //1-31, lower is better quality
+      quality = 2, //1-31, lower is better quality
+      maxRetries = 3,
+      retryDelay = 500
     } = options;
 
     //validate video exists
     if (!existsSync(videoPath)) {
       throw new Error(`Video file not found: ${videoPath}`);
     }
+
+    //verify file is ready for reading to prevent race conditions
+    await this.verifyFileReadiness(videoPath, maxRetries, retryDelay);
 
     //generate thumbnail path
     const videoDir = path.dirname(videoPath);
@@ -36,26 +41,106 @@ class ThumbnailService {
 
     console.log(`[Thumbnail] Generating thumbnail for: ${videoPath}`);
 
-    return new Promise((resolve, reject) => {
-      ffmpeg(videoPath)
-        .screenshots({
-          timestamps: [seekTime],
-          filename: `${videoBasename}_thumb.jpg`,
-          folder: videoDir,
-          size: `${width}x${height}`
-        })
-        .outputOptions([
-          `-q:v ${quality}` //jpeg quality
-        ])
-        .on('end', () => {
-          console.log(`[Thumbnail] Generated: ${thumbnailPath}`);
-          resolve(thumbnailPath);
-        })
-        .on('error', (err) => {
-          console.error(`[Thumbnail] Generation failed:`, err);
-          reject(err);
-        });
+    //retry thumbnail generation with backoff
+    return this.generateThumbnailWithRetry(videoPath, thumbnailPath, {
+      seekTime,
+      width,
+      height,
+      quality,
+      videoBasename,
+      videoDir,
+      maxRetries,
+      retryDelay
     });
+  }
+
+  //generate thumbnail with retry logic and better error handling
+  async generateThumbnailWithRetry(videoPath, thumbnailPath, options) {
+    const { seekTime, width, height, quality, videoBasename, videoDir, maxRetries, retryDelay } = options;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await new Promise((resolve, reject) => {
+          //add timeout to prevent hanging FFmpeg processes
+          const timeout = setTimeout(() => {
+            reject(new Error('FFmpeg timeout after 30 seconds'));
+          }, 30000);
+          
+          ffmpeg(videoPath)
+            .screenshots({
+              timestamps: [seekTime],
+              filename: `${videoBasename}_thumb.jpg`,
+              folder: videoDir,
+              size: `${width}x${height}`
+            })
+            .outputOptions([
+              `-q:v ${quality}` //jpeg quality
+            ])
+            .on('end', () => {
+              clearTimeout(timeout);
+              console.log(`[Thumbnail] Generated: ${thumbnailPath}`);
+              resolve(thumbnailPath);
+            })
+            .on('error', (err) => {
+              clearTimeout(timeout);
+              console.error(`[Thumbnail] Generation failed (attempt ${attempt}/${maxRetries}):`, err.message);
+              reject(err);
+            });
+        });
+      } catch (error) {
+        //check if this is the final attempt
+        if (attempt === maxRetries) {
+          //provide more specific error messages
+          if (error.message.includes('No such file or directory')) {
+            throw new Error(`Video file was deleted during thumbnail generation: ${videoPath}`);
+          } else if (error.message.includes('timeout')) {
+            throw new Error(`Thumbnail generation timed out for: ${videoPath}`);
+          } else {
+            throw new Error(`Thumbnail generation failed after ${maxRetries} attempts: ${error.message}`);
+          }
+        }
+        
+        console.warn(`[Thumbnail] Attempt ${attempt} failed, retrying in ${retryDelay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        
+        //exponential backoff for subsequent attempts
+        retryDelay *= 1.5;
+      }
+    }
+  }
+
+  //verify file is ready for reading to prevent race conditions
+  async verifyFileReadiness(videoPath, maxRetries = 3, retryDelay = 500) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        //attempt to open and read a small portion of the file
+        const fileHandle = await fs.open(videoPath, 'r');
+        
+        //try to read the first few bytes to verify file is accessible
+        const buffer = Buffer.alloc(1024);
+        await fileHandle.read(buffer, 0, 1024, 0);
+        await fileHandle.close();
+        
+        //verify file size is reasonable (not 0 bytes)
+        const stats = await fs.stat(videoPath);
+        if (stats.size < 1024) {
+          throw new Error(`File too small: ${stats.size} bytes`);
+        }
+        
+        console.log(`[Thumbnail] File readiness verified for ${videoPath} (${stats.size} bytes)`);
+        return; //file is ready
+        
+      } catch (error) {
+        console.warn(`[Thumbnail] File readiness check failed (attempt ${attempt}/${maxRetries}):`, error.message);
+        
+        if (attempt === maxRetries) {
+          throw new Error(`File not ready after ${maxRetries} attempts: ${error.message}`);
+        }
+        
+        //wait before retrying
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
+    }
   }
 
   //get thumbnail path for a video

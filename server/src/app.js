@@ -141,14 +141,37 @@ eventEmitter.on('motion', (data) => {
 eventEmitter.on('recording-complete', async (data) => {
   console.log('[Recording] Complete:', data);
   
-  // Generate thumbnail for completed recording
-  if (data.path) {
-    try {
-      console.log('[Thumbnail] Generating thumbnail for completed recording:', data.path);
-      await thumbnailService.generateThumbnail(data.path);
-      console.log('[Thumbnail] Thumbnail generated successfully');
-    } catch (error) {
-      console.error('[Thumbnail] Failed to generate thumbnail:', error);
+  // Generate thumbnail for completed recording with coordination
+  if (data.path && data.id) {
+    //extract sourceId from recording data or path to get the right RecordingService
+    const sourceId = data.sourceId || 'default';
+    const recordingService = recordingServices.get(sourceId);
+    
+    if (recordingService) {
+      //mark thumbnail generation as in progress to prevent race conditions
+      recordingService.markThumbnailInProgress(data.id);
+      
+      try {
+        console.log('[Thumbnail] Generating thumbnail for completed recording:', data.path);
+        await thumbnailService.generateThumbnail(data.path);
+        console.log('[Thumbnail] Thumbnail generated successfully');
+      } catch (error) {
+        console.error('[Thumbnail] Failed to generate thumbnail:', error);
+        //note: we still need to mark as complete even on error to release any deferred deletions
+      } finally {
+        //always mark thumbnail generation as complete to release any deferred operations
+        recordingService.markThumbnailComplete(data.id);
+      }
+    } else {
+      console.warn(`[Thumbnail] Recording service not found for sourceId: ${sourceId}`);
+      //fallback to original behavior if service not found
+      try {
+        console.log('[Thumbnail] Generating thumbnail for completed recording (fallback):', data.path);
+        await thumbnailService.generateThumbnail(data.path);
+        console.log('[Thumbnail] Thumbnail generated successfully');
+      } catch (error) {
+        console.error('[Thumbnail] Failed to generate thumbnail:', error);
+      }
     }
   }
   

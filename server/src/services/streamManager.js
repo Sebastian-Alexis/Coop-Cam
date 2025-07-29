@@ -36,12 +36,12 @@ export const createStreamManager = ({ config }) => {
       return null; // Source ID not found
     }
 
-    //create new proxy instance (lazy initialization)
+    //create new proxy instance (persistent connection)
     console.log(`[StreamManager] Creating proxy for source: ${canonicalSourceId} (${sourceConfig.url})`);
     const newProxy = new MjpegProxy(sourceConfig.url, {
       sourceId: sourceConfig.id,
       sourceName: sourceConfig.name,
-      disableAutoConnect: true // Don't auto-connect during creation
+      disableAutoConnect: false // Enable auto-connect for persistent connections
     });
     
     //store proxy instance under canonical id only
@@ -124,21 +124,16 @@ export const createStreamManager = ({ config }) => {
     proxies.clear();
   }
 
-  //cleanup inactive proxies (optional optimization)
+  //maintain persistent connections (no cleanup of inactive proxies)
   function cleanupInactiveProxies() {
-    const inactiveThreshold = 5 * 60 * 1000; // 5 minutes
-    const now = Date.now();
+    //proxies now maintain persistent connections regardless of client count
+    console.log(`[StreamManager] Maintaining ${proxies.size} persistent proxy connections`);
     
+    //health check for debugging - log proxy status without disconnecting
     proxies.forEach((proxy, sourceId) => {
       const stats = proxy.getStats();
-      if (stats.clientCount === 0 && now - stats.lastFrameTime > inactiveThreshold) {
-        console.log(`[StreamManager] Cleaning up inactive proxy for source: ${sourceId}`);
-        try {
-          proxy.disconnect?.();
-        } catch (error) {
-          console.error(`[StreamManager] Error cleaning up proxy ${sourceId}:`, error);
-        }
-        proxies.delete(sourceId);
+      if (stats.clientCount === 0) {
+        console.log(`[StreamManager] Proxy ${sourceId}: 0 clients, connected: ${stats.isConnected}, frames: ${stats.frameCount}`);
       }
     });
   }
