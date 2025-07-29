@@ -304,8 +304,100 @@
         </video>
       </div>
       <div class="modal-action">
+        <button id="shareVideoBtn" type="button" onclick="shareCurrentVideo()" class="btn btn-primary touch-target">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 mr-2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-11.814a2.25 2.25 0 1 0 3.935-2.186 2.25 2.25 0 0 0-3.935 2.186Z" />
+          </svg>
+          Share
+        </button>
         <form method="dialog">
           <button class="btn touch-target">Close</button>
+        </form>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+
+  <!-- Share Modal -->
+  <dialog id="shareModal" class="modal">
+    <div class="modal-box max-w-md modal-mobile-optimized">
+      <div class="modal-mobile-handle mobile-only"></div>
+      <h3 class="font-bold text-lg mb-4">Share Recording</h3>
+      
+      <!-- Share Options -->
+      <div class="space-y-4">
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Link Expiration</span>
+          </label>
+          <select id="shareExpiration" class="select select-bordered w-full">
+            <option value="">Never expires</option>
+            <option value="1h">1 Hour</option>
+            <option value="24h">24 Hours</option>
+            <option value="7d">7 Days</option>
+            <option value="30d">30 Days</option>
+          </select>
+        </div>
+        
+        <div class="form-control">
+          <label class="label cursor-pointer">
+            <span class="label-text">Password Protection</span>
+            <input type="checkbox" id="sharePassword" class="checkbox" />
+          </label>
+          <input type="password" id="sharePasswordValue" class="input input-bordered w-full mt-2 hidden" placeholder="Enter password">
+        </div>
+        
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Custom Message (Optional)</span>
+          </label>
+          <textarea id="shareMessage" class="textarea textarea-bordered" placeholder="Add a message for viewers..." rows="3"></textarea>
+        </div>
+        
+        <!-- Generated Link -->
+        <div id="shareResult" class="hidden">
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text">Share Link</span>
+            </label>
+            <div class="join w-full">
+              <input id="shareUrl" type="text" class="input input-bordered join-item flex-1" readonly>
+              <button type="button" onclick="copyShareLink()" class="btn btn-primary join-item">Copy</button>
+            </div>
+          </div>
+          
+          <!-- Social Media Buttons -->
+          <div class="mt-4">
+            <label class="label">
+              <span class="label-text">Share To</span>
+            </label>
+            <div class="flex gap-2 flex-wrap">
+              <button type="button" onclick="shareToFacebook()" class="btn btn-sm bg-blue-600 hover:bg-blue-700 text-white border-0">
+                📘 Facebook
+              </button>
+              <button type="button" onclick="shareToTwitter()" class="btn btn-sm bg-sky-500 hover:bg-sky-600 text-white border-0">
+                🐦 Twitter
+              </button>
+              <button type="button" onclick="shareToWhatsApp()" class="btn btn-sm bg-green-600 hover:bg-green-700 text-white border-0">
+                💬 WhatsApp
+              </button>
+              <button type="button" onclick="shareToEmail()" class="btn btn-sm bg-gray-600 hover:bg-gray-700 text-white border-0">
+                📧 Email
+              </button>
+              <button type="button" onclick="shareToDiscord()" class="btn btn-sm bg-indigo-600 hover:bg-indigo-700 text-white border-0">
+                💬 Discord
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="modal-action">
+        <button id="generateShareBtn" type="button" onclick="generateShareLink()" class="btn btn-primary">Generate Link</button>
+        <form method="dialog">
+          <button class="btn">Close</button>
         </form>
       </div>
     </div>

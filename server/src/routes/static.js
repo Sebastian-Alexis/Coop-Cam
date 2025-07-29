@@ -13,6 +13,7 @@ export const createStaticRouter = ({ staticController }) => {
   router.get('/coop1', staticController.serveCoop1Page);
   router.get('/coop2', staticController.serveCoop2Page);
   router.get('/about', staticController.serveAboutPage);
+  router.get('/share/:token', staticController.serveSharePage);
   router.get('/mobile.css', staticController.serveMobileCSS);
   router.get('/gestures.js', staticController.serveGesturesJS);
   router.get('/css/coop.css', staticController.serveCoopCSS);

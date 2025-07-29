@@ -59,13 +59,15 @@
     
     .button-container {
       margin-top: 40px;
+      display: flex;
+      gap: 20px;
     }
     
     .cta-button {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 231px;
+      width: 260px;
       height: 76px;
       background-color: #8C3F27;
       color: white;
@@ -210,6 +212,12 @@
         font-size: 18px;
       }
       
+      .button-container {
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+      }
+      
       .cta-button {
         width: 100%;
         max-width: 300px;
@@ -239,6 +247,12 @@
       .subtitle {
         text-align: center;
         font-size: 24px;
+      }
+      
+      .button-container {
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
       }
       
       .cta-button {
@@ -299,6 +313,7 @@
     
     <div class="button-container">
       <a href="/coop" class="cta-button">Visit My Coop!</a>
+      <a href="/about" class="cta-button">About My Chickens</a>
     </div>
   </div>
   
@@ -307,7 +322,7 @@
   <div class="footer-links">
     <a href="https://summer.hackclub.com/projects/5364" class="footer-link devlogs-link">Devlogs</a>
     <a href="https://github.com/Sebastian-Alexis/Coop-Cam" class="footer-link github-link">Github</a>
-    <a href="mailto:sebastian@example.com" class="footer-link contact-link">Contact</a>
+    <a href="mailto:sebastianralexis@gmail.com" class="footer-link contact-link">Contact</a>
   </div>
 </body>
 </html>

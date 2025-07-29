@@ -84,6 +84,11 @@ export const config = {
   DROIDCAM_PATH: '/video',
   
   // Server configuration
+  server: {
+    port: parseInt(process.env.SERVER_PORT || '3001', 10),
+    host: process.env.SERVER_HOST || '0.0.0.0',
+    baseUrl: process.env.BASE_URL || `http://localhost:${parseInt(process.env.SERVER_PORT || '3001', 10)}`
+  },
   SERVER_PORT: parseInt(process.env.SERVER_PORT || '3001', 10),
   SERVER_HOST: process.env.SERVER_HOST || '0.0.0.0',
   

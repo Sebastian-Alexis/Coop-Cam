@@ -12,6 +12,17 @@ export const createStaticController = ({ config }) => {
     throw new Error('StaticController: config dependency is required.');
   }
 
+  //safely send error response, checking if connection is still active
+  const sendErrorSafely = (res, statusCode, message, context = '') => {
+    //check if response is still writable and headers haven't been sent
+    if (!res.finished && !res.headersSent) {
+      res.status(statusCode).send(message);
+    } else {
+      //log for debugging but don't attempt to send response
+      console.warn(`Cannot send ${statusCode} response - connection closed. Context: ${context}`);
+    }
+  };
+
   //helper function to serve static HTML pages with cache headers
   const serveStaticHTML = (filename) => (req, res) => {
     const filePath = path.join(__dirname, '..', 'views', filename);
@@ -24,8 +35,9 @@ export const createStaticController = ({ config }) => {
     
     res.sendFile(filePath, (err) => {
       if (err) {
-        console.error(`Error serving ${filename}:`, err);
-        res.status(404).send('Page not found');
+        console.error(`Error serving ${filename}:`, err.message || err);
+        //safely send error response only if connection is still active
+        sendErrorSafely(res, 404, 'Page not found', `serving ${filename}`);
       }
     });
   };
@@ -45,6 +57,9 @@ export const createStaticController = ({ config }) => {
   //serve info/about page
   const serveAboutPage = serveStaticHTML('about.html');
 
+  //serve share viewer page
+  const serveSharePage = serveStaticHTML('share.html');
+
   //serve mobile CSS file
   const serveMobileCSS = (req, res) => {
     const filePath = path.join(__dirname, '..', 'views', 'mobile.css');
@@ -54,8 +69,8 @@ export const createStaticController = ({ config }) => {
     });
     res.sendFile(filePath, (err) => {
       if (err) {
-        console.error('Error serving mobile.css:', err);
-        res.status(404).send('File not found');
+        console.error('Error serving mobile.css:', err.message || err);
+        sendErrorSafely(res, 404, 'File not found', 'serving mobile.css');
       }
     });
   };
@@ -69,8 +84,8 @@ export const createStaticController = ({ config }) => {
     });
     res.sendFile(filePath, (err) => {
       if (err) {
-        console.error('Error serving gestures.js:', err);
-        res.status(404).send('File not found');
+        console.error('Error serving gestures.js:', err.message || err);
+        sendErrorSafely(res, 404, 'File not found', 'serving gestures.js');
       }
     });
   };
@@ -84,8 +99,8 @@ export const createStaticController = ({ config }) => {
     });
     res.sendFile(filePath, (err) => {
       if (err) {
-        console.error('Error serving coop.css:', err);
-        res.status(404).send('File not found');
+        console.error('Error serving coop.css:', err.message || err);
+        sendErrorSafely(res, 404, 'File not found', 'serving coop.css');
       }
     });
   };
@@ -99,8 +114,8 @@ export const createStaticController = ({ config }) => {
     });
     res.sendFile(filePath, (err) => {
       if (err) {
-        console.error('Error serving coop.js:', err);
-        res.status(404).send('File not found');
+        console.error('Error serving coop.js:', err.message || err);
+        sendErrorSafely(res, 404, 'File not found', 'serving coop.js');
       }
     });
   };
@@ -111,6 +126,7 @@ export const createStaticController = ({ config }) => {
     serveCoop1Page,
     serveCoop2Page,
     serveAboutPage,
+    serveSharePage,
     serveMobileCSS,
     serveGesturesJS,
     serveCoopCSS,

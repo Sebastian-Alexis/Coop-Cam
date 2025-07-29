@@ -1269,7 +1269,7 @@
         reactionItem.title = `React with ${DOMUtils.escapeHtml(type)} (${DOMUtils.escapeHtml(tone)})`;
         reactionItem.addEventListener('click', (event) => {
           event.stopPropagation();
-          selectReaction(DOMUtils.escapeHtml(recording.filename), DOMUtils.escapeHtml(type));
+          selectReaction(DOMUtils.escapeHtml(recording.filename), DOMUtils.escapeHtml(type), DOMUtils.escapeHtml(tone));
         });
         
         const reactionImg = DOMUtils.createElement('img', null, '');
@@ -1370,6 +1370,9 @@
       return null;
     }
 
+    //global variable to track current video filename for sharing
+    let currentVideoFilename = null;
+
     //play recording in modal
     function playRecording(videoUrl, filename) {
       const modal = document.getElementById('videoModal');
@@ -1380,6 +1383,14 @@
       video.src = videoUrl;
       title.textContent = filename || 'Recording Playback';
       
+      //extract filename from videoUrl for sharing
+      //videoUrl format: /api/recordings/video/YYYY-MM-DD_HH-MM-SS_motion_cameraId_uniqueId.mp4
+      if (videoUrl && videoUrl.includes('/api/recordings/video/')) {
+        currentVideoFilename = decodeURIComponent(videoUrl.split('/').pop());
+      } else {
+        currentVideoFilename = null;
+      }
+      
       //show modal
       modal.showModal();
       
@@ -1387,8 +1398,19 @@
       modal.addEventListener('close', () => {
         video.pause();
         video.currentTime = 0;
+        currentVideoFilename = null; //clear filename when modal closes
       }, { once: true });
     }
+
+    //share current video from modal
+    window.shareCurrentVideo = function() {
+      if (currentVideoFilename) {
+        openShareModal(currentVideoFilename);
+      } else {
+        console.error('[Share] No video filename available for sharing');
+        showToast('Unable to share this recording', 'error');
+      }
+    };
 
     //show reaction popup
     function showReactionPopup(filename) {
@@ -1546,21 +1568,21 @@
     }
     
     //select a reaction from the popup
-    async function selectReaction(filename, reactionType) {
+    async function selectReaction(filename, reactionType, specifiedTone = null) {
       //hide popup
       hideAllPopups();
       
-      //toggle the reaction with current tone
-      await toggleReaction(filename, reactionType);
+      //toggle the reaction with specified tone or current tone
+      await toggleReaction(filename, reactionType, specifiedTone);
     }
     
     //toggle reaction on a recording
-    async function toggleReaction(filename, reactionType) {
+    async function toggleReaction(filename, reactionType, specifiedTone = null) {
       const viewerId = getOrCreateViewerId();
       const popup = document.getElementById('globalReactionPopup');
       const option = popup.querySelector(`.reaction-option[data-reaction="${reactionType}"]`);
       const isActive = option?.classList.contains('active') || false;
-      const currentTone = window.globalReactionTone || 'marshmallow';
+      const currentTone = specifiedTone || window.globalReactionTone || 'marshmallow';
       
       //get the recording's reaction data
       const recording = findRecordingByFilename(filename);
@@ -1687,7 +1709,7 @@
           reactionItem.title = `React with ${DOMUtils.escapeHtml(type)} (${DOMUtils.escapeHtml(tone)})`;
           reactionItem.addEventListener('click', (event) => {
             event.stopPropagation();
-            selectReaction(DOMUtils.escapeHtml(filename), DOMUtils.escapeHtml(type));
+            selectReaction(DOMUtils.escapeHtml(filename), DOMUtils.escapeHtml(type), DOMUtils.escapeHtml(tone));
           });
           
           const reactionImg = DOMUtils.createElement('img', null, '');
@@ -2717,4 +2739,204 @@
           }
         }, 100, 'focusPasswordInput');
       }
+    };
+
+    // ===============================================================================
+    // SHARE FUNCTIONALITY
+    // ===============================================================================
+
+    //global share functionality
+    let currentShareFilename = null;
+
+    //open share modal for a recording
+    window.openShareModal = function(filename) {
+      currentShareFilename = filename;
+      
+      //reset modal state
+      resetShareModal();
+      
+      //show modal
+      const modal = document.getElementById('shareModal');
+      if (modal) {
+        modal.showModal();
+      }
+    };
+
+    //reset share modal to initial state
+    function resetShareModal() {
+      document.getElementById('shareExpiration').value = '';
+      document.getElementById('sharePassword').checked = false;
+      document.getElementById('sharePasswordValue').value = '';
+      document.getElementById('sharePasswordValue').classList.add('hidden');
+      document.getElementById('shareMessage').value = '';
+      document.getElementById('shareResult').classList.add('hidden');
+      document.getElementById('generateShareBtn').style.display = 'inline-flex';
+    }
+
+    //toggle password field visibility
+    document.addEventListener('DOMContentLoaded', function() {
+      const passwordCheckbox = document.getElementById('sharePassword');
+      const passwordField = document.getElementById('sharePasswordValue');
+      
+      if (passwordCheckbox && passwordField) {
+        passwordCheckbox.addEventListener('change', function() {
+          if (this.checked) {
+            passwordField.classList.remove('hidden');
+            passwordField.focus();
+          } else {
+            passwordField.classList.add('hidden');
+            passwordField.value = '';
+          }
+        });
+      }
+    });
+
+    //generate share link
+    window.generateShareLink = async function() {
+      if (!currentShareFilename) {
+        console.error('[Share] No filename selected');
+        return;
+      }
+
+      try {
+        const expiration = document.getElementById('shareExpiration').value;
+        const usePassword = document.getElementById('sharePassword').checked;
+        const password = document.getElementById('sharePasswordValue').value;
+        const message = document.getElementById('shareMessage').value;
+
+        const requestBody = {
+          filename: currentShareFilename,
+          expiresIn: expiration || null,
+          requirePassword: usePassword,
+          password: usePassword ? password : null,
+          customMessage: message || null
+        };
+
+        const response = await fetch('/api/share/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          showShareResult(result.shareUrl, result.token);
+        } else {
+          console.error('[Share] Failed to create share link:', result.error);
+          alert('Failed to create share link: ' + result.error);
+        }
+      } catch (error) {
+        console.error('[Share] Error generating share link:', error);
+        alert('Failed to create share link: ' + error.message);
+      }
+    };
+
+    //show share result with URL
+    function showShareResult(shareUrl, token) {
+      document.getElementById('shareUrl').value = shareUrl;
+      document.getElementById('shareResult').classList.remove('hidden');
+      document.getElementById('generateShareBtn').style.display = 'none';
+    }
+
+    //copy share link to clipboard
+    window.copyShareLink = async function() {
+      try {
+        const url = document.getElementById('shareUrl').value;
+        await navigator.clipboard.writeText(url);
+        showToast('Link copied to clipboard!', 'success');
+      } catch (error) {
+        console.error('[Share] Failed to copy link:', error);
+        
+        //fallback for older browsers
+        const urlField = document.getElementById('shareUrl');
+        urlField.select();
+        urlField.setSelectionRange(0, 99999);
+        document.execCommand('copy');
+        showToast('Link copied to clipboard!', 'success');
+      }
+    };
+
+    // Social media sharing functions
+    window.shareToFacebook = function() {
+      const url = document.getElementById('shareUrl').value;
+      const message = document.getElementById('shareMessage').value;
+      const shareText = message || 'Check out this chicken coop recording! 🐓';
+      const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(shareText)}`;
+      window.open(fbUrl, '_blank', 'width=600,height=400');
+    };
+
+    window.shareToTwitter = function() {
+      const url = document.getElementById('shareUrl').value;
+      const message = document.getElementById('shareMessage').value;
+      const text = message || 'Check out this chicken coop recording! 🐓';
+      const twitterUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
+      window.open(twitterUrl, '_blank', 'width=600,height=400');
+    };
+
+    window.shareToWhatsApp = function() {
+      const url = document.getElementById('shareUrl').value;
+      const message = document.getElementById('shareMessage').value;
+      const text = `${message || 'Check out this chicken coop recording! 🐓'} ${url}`;
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+      window.open(whatsappUrl, '_blank');
+    };
+
+    window.shareToEmail = function() {
+      const url = document.getElementById('shareUrl').value;
+      const message = document.getElementById('shareMessage').value;
+      const subject = 'Chicken Coop Recording';
+      const body = `${message || 'Check out this chicken coop recording!'}\n\n${url}`;
+      const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = mailtoUrl;
+    };
+
+    window.shareToDiscord = function() {
+      const url = document.getElementById('shareUrl').value;
+      const message = document.getElementById('shareMessage').value;
+      const text = `${message || 'Check out this chicken coop recording! 🐓'} ${url}`;
+      
+      //copy to clipboard for Discord
+      copyToClipboard(text).then(() => {
+        showToast('Message copied! Paste it in Discord.', 'info');
+      }).catch(() => {
+        //fallback alert
+        alert('Copy this message to Discord:\n\n' + text);
+      });
+    };
+
+    //helper function to copy text to clipboard
+    async function copyToClipboard(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (error) {
+        //fallback for older browsers
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+    }
+
+    //helper function to show toast notifications
+    function showToast(message, type = 'info') {
+      //create toast element
+      const toast = document.createElement('div');
+      toast.className = `alert alert-${type} fixed top-4 right-4 z-50 max-w-xs shadow-lg`;
+      toast.innerHTML = `
+        <span>${DOMUtils.escapeHtml(message)}</span>
+      `;
+      
+      document.body.appendChild(toast);
+      
+      //remove toast after 3 seconds
+      TimerManager.setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 3000, 'removeToast');
     };

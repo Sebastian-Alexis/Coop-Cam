@@ -11,6 +11,7 @@ import { createStaticController } from '../controllers/staticController.js';
 import { createReactionController } from '../controllers/reactionController.js';
 import { createRecordingController } from '../controllers/recordingController.js';
 import { createBatchController } from '../controllers/batchController.js';
+import { createShareController } from '../controllers/shareController.js';
 import { createFlashlightRouter } from './api/flashlight.js';
 import { createHealthRouter } from './api/health.js';
 import { createWeatherRouter } from './api/weather.js';
@@ -21,6 +22,7 @@ import { createStaticRouter } from './static.js';
 import { createReactionRouter } from './api/reaction.js';
 import { createRecordingRouter } from './api/recording.js';
 import { createBatchRouter } from './api/batch.js';
+import { createShareRouter } from './api/share.js';
 
 //main route initialization function - receives app and all dependencies
 export const initializeRoutes = (app, { 
@@ -34,6 +36,7 @@ export const initializeRoutes = (app, {
   authService,
   reactionService,
   thumbnailService,
+  shareService,
   REACTION_TYPES,
   CHICKEN_TONES,
   config,
@@ -50,6 +53,7 @@ export const initializeRoutes = (app, {
   const reactionController = createReactionController({ reactionService, REACTION_TYPES, CHICKEN_TONES });
   const recordingController = createRecordingController({ thumbnailService, reactionService, config, REACTION_TYPES, CHICKEN_TONES });
   const batchController = createBatchController({ streamManager, weatherService, flashlightState, recordingServices, thumbnailService, config });
+  const shareController = createShareController({ shareService, thumbnailService, config });
 
   //instantiate and mount routers
   const flashlightRouter = createFlashlightRouter({ flashlightController });
@@ -82,5 +86,8 @@ export const initializeRoutes = (app, {
   const batchRouter = createBatchRouter({ batchController });
   app.use('/api', batchRouter);
 
-  console.log('[Routes] Flashlight, health, weather, motion, stream, droidcam, static, reaction, recording, and batch routes initialized');
+  const shareRouter = createShareRouter({ shareController });
+  app.use('/api', shareRouter);
+
+  console.log('[Routes] Flashlight, health, weather, motion, stream, droidcam, static, reaction, recording, batch, and share routes initialized');
 };

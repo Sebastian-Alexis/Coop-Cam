@@ -23,6 +23,7 @@ import MotionDetectionService from './services/motionDetectionService.js';
 import RecordingService from './services/recordingService.js';
 import ThumbnailService from './services/thumbnailService.js';
 import ReactionService, { REACTION_TYPES, CHICKEN_TONES } from './services/reactionService.js';
+import { createShareService } from './services/shareService.js';
 import flashlightState from './state/flashlightState.js';
 import sseService from './state/sseService.js';
 import authService from './state/authState.js';
@@ -112,6 +113,10 @@ console.log('[Server] Thumbnail service created');
 // Create reaction service
 const reactionService = new ReactionService(config);
 console.log('[Server] Reaction service created');
+
+// Create share service
+const shareService = createShareService({ config });
+console.log('[Server] Share service created');
 
 
 // Listen for motion events to broadcast to SSE clients
@@ -286,6 +291,7 @@ initializeRoutes(app, {
   authService,
   reactionService,
   thumbnailService,
+  shareService,
   REACTION_TYPES,
   CHICKEN_TONES,
   config

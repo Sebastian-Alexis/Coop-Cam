@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="caramellatte">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shared Chicken Coop Recording</title>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Jersey+25&display=swap" rel="stylesheet">
+  <style>
+    .jersey-font { font-family: 'Jersey 25', sans-serif; }
+  </style>
+</head>
+<body class="bg-base-100">
+  <div class="min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-4xl w-full">
+      <!-- Loading State -->
+      <div id="loadingState" class="text-center">
+        <div class="flex flex-col items-center gap-4">
+          <span class="loading loading-spinner loading-lg"></span>
+          <p class="text-lg">Loading shared recording...</p>
+        </div>
+      </div>
+
+      <!-- Password Required State -->
+      <div id="passwordState" class="hidden">
+        <div class="max-w-md mx-auto bg-base-200 rounded-2xl p-8 shadow-lg">
+          <h2 class="text-2xl font-bold mb-4 text-center">Password Required</h2>
+          <p class="text-base-content/70 text-center mb-6">This recording is password protected</p>
+          
+          <div class="form-control">
+            <input type="password" id="sharePasswordInput" class="input input-bordered w-full" placeholder="Enter password">
+          </div>
+          
+          <div class="mt-4">
+            <button onclick="submitPassword()" class="btn btn-primary w-full">Access Recording</button>
+          </div>
+          
+          <div id="passwordError" class="text-error text-sm mt-2 hidden text-center"></div>
+        </div>
+      </div>
+
+      <!-- Error State -->
+      <div id="errorState" class="hidden">
+        <div class="max-w-md mx-auto bg-base-200 rounded-2xl p-8 shadow-lg text-center">
+          <div class="text-6xl mb-4">❌</div>
+          <h2 class="text-2xl font-bold mb-4">Recording Not Available</h2>
+          <p id="errorMessage" class="text-base-content/70 mb-6"></p>
+          <a href="/" class="btn btn-primary">
+            🐓 Visit Our Chicken Coop Live Stream
+          </a>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div id="mainContent" class="hidden">
+        <!-- Custom Message Display -->
+        <div id="customMessage" class="text-center mb-6 hidden">
+          <div class="bg-base-200 rounded-lg p-4">
+            <p id="messageText" class="text-lg"></p>
+          </div>
+        </div>
+        
+        <!-- Video Player -->
+        <div class="bg-base-200 rounded-2xl overflow-hidden shadow-lg">
+          <video id="sharedVideo" controls class="w-full" preload="metadata">
+            <source id="videoSource" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+        </div>
+        
+        <!-- Recording Info -->
+        <div class="text-center mt-6">
+          <h1 class="text-3xl font-bold mb-2 jersey-font">Chicken Coop Recording</h1>
+          <p class="text-base-content/60 text-lg" id="recordingDate"></p>
+          <p class="text-sm text-base-content/40 mt-2">
+            Viewed <span id="viewCount">0</span> times
+          </p>
+        </div>
+        
+        <!-- Call to Action -->
+        <div class="text-center mt-8">
+          <a href="/" class="btn btn-primary btn-lg">
+            🐓 Visit Our Chicken Coop Live Stream
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Extract token from URL path
+    const token = window.location.pathname.split('/').pop();
+    let shareData = null;
+
+    // Load shared recording
+    async function loadSharedRecording(password = null) {
+      try {
+        const requestBody = password ? { password } : {};
+        const response = await fetch(`/api/share/${token}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          shareData = result;
+          displayRecording(result);
+        } else {
+          if (result.requiresPassword) {
+            showPasswordState();
+          } else {
+            showError(result.error || 'Recording not found');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading shared recording:', error);
+        showError('Failed to load recording');
+      }
+    }
+
+    // Display the recording
+    function displayRecording(data) {
+      // Hide loading state
+      document.getElementById('loadingState').classList.add('hidden');
+      document.getElementById('passwordState').classList.add('hidden');
+      document.getElementById('errorState').classList.add('hidden');
+      
+      // Show main content
+      document.getElementById('mainContent').classList.remove('hidden');
+
+      // Set video source
+      const video = document.getElementById('sharedVideo');
+      const source = document.getElementById('videoSource');
+      source.src = data.videoUrl;
+      video.load();
+
+      // Set poster image if available
+      if (data.thumbnailUrl) {
+        video.poster = data.thumbnailUrl;
+      }
+
+      // Display custom message if provided
+      if (data.share && data.share.customMessage) {
+        document.getElementById('messageText').textContent = data.share.customMessage;
+        document.getElementById('customMessage').classList.remove('hidden');
+      }
+
+      // Display recording info
+      if (data.share && data.share.createdAt) {
+        const date = new Date(data.share.createdAt);
+        document.getElementById('recordingDate').textContent = date.toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+
+      // Display view count
+      if (data.share && data.share.viewCount) {
+        document.getElementById('viewCount').textContent = data.share.viewCount;
+      }
+
+      // Update page title
+      document.title = `Chicken Coop Recording - ${data.share?.filename || 'Shared Recording'}`;
+    }
+
+    // Show password input state
+    function showPasswordState() {
+      document.getElementById('loadingState').classList.add('hidden');
+      document.getElementById('passwordState').classList.remove('hidden');
+      document.getElementById('passwordError').classList.add('hidden');
+      
+      // Focus password input
+      setTimeout(() => {
+        document.getElementById('sharePasswordInput').focus();
+      }, 100);
+    }
+
+    // Show error state
+    function showError(message) {
+      document.getElementById('loadingState').classList.add('hidden');
+      document.getElementById('passwordState').classList.add('hidden');
+      document.getElementById('mainContent').classList.add('hidden');
+      
+      document.getElementById('errorMessage').textContent = message;
+      document.getElementById('errorState').classList.remove('hidden');
+    }
+
+    // Submit password
+    window.submitPassword = async function() {
+      const password = document.getElementById('sharePasswordInput').value;
+      const errorDiv = document.getElementById('passwordError');
+      
+      if (!password) {
+        errorDiv.textContent = 'Please enter a password';
+        errorDiv.classList.remove('hidden');
+        return;
+      }
+
+      // Hide previous error
+      errorDiv.classList.add('hidden');
+      
+      // Show loading state
+      document.getElementById('passwordState').classList.add('hidden');
+      document.getElementById('loadingState').classList.remove('hidden');
+
+      // Try to load with password
+      try {
+        const response = await fetch(`/api/share/${token}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          displayRecording(result);
+        } else {
+          // Show password state again with error
+          document.getElementById('loadingState').classList.add('hidden');
+          document.getElementById('passwordState').classList.remove('hidden');
+          document.getElementById('passwordError').textContent = 'Incorrect password';
+          document.getElementById('passwordError').classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error('Error submitting password:', error);
+        showError('Failed to verify password');
+      }
+    };
+
+    // Handle Enter key in password input
+    document.addEventListener('DOMContentLoaded', function() {
+      const passwordInput = document.getElementById('sharePasswordInput');
+      if (passwordInput) {
+        passwordInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            submitPassword();
+          }
+        });
+      }
+    });
+
+    // Initialize
+    loadSharedRecording();
+  </script>
+</body>
+</html>
