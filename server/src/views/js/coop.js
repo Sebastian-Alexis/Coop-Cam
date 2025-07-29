@@ -918,10 +918,13 @@
           }
         }
         
+        //use camera-specific endpoint for multi-camera support
+        const flashlightUrl = `/api/flashlight/${currentCamera}/status`;
+        
         //use request queue on mobile
         const response = isMobile 
-          ? await requestQueue.fetch('/api/flashlight/status', {}, { priority: 0 })
-          : await fetch('/api/flashlight/status');
+          ? await requestQueue.fetch(flashlightUrl, {}, { priority: 0 })
+          : await fetch(flashlightUrl);
           
         const data = await response.json();
         
@@ -1056,7 +1059,8 @@
       console.log('toggleFlashlight called but UI elements no longer exist');
       
       try {
-        const response = await fetch('/api/flashlight/on', {
+        //use camera-specific endpoint for multi-camera support
+        const response = await fetch(`/api/flashlight/${currentCamera}/on`, {
           method: 'PUT',
           headers: {
             'Accept': 'application/json'
@@ -1590,8 +1594,7 @@
         console.error('Failed to fetch recordings:', error);
       }
       
-      //after recordings are loaded, update reactions with user-specific data
-      TimerManager.setTimeout(() => updateReactionsOnly(), 100, 'delayedReactionUpdate');
+      //reactions are now updated by dedicated timer (removed redundant call that was causing spam)
     }
 
     //update recordings for all cameras
@@ -2597,7 +2600,7 @@
               { endpoint: '/api/stats' },
               { endpoint: '/api/weather' },
               { endpoint: `/api/stream/${currentCamera}/status` },
-              { endpoint: '/api/flashlight/status' }
+              { endpoint: `/api/flashlight/${currentCamera}/status` }
             ]
           })
         }, { priority: 1 });
@@ -2618,7 +2621,7 @@
                 case `/api/stream/${currentCamera}/status`:
                   handleStreamStatusUpdate(result.data);
                   break;
-                case '/api/flashlight/status':
+                case `/api/flashlight/${currentCamera}/status`:
                   handleFlashlightStatusUpdate(result.data);
                   break;
               }
@@ -2822,7 +2825,7 @@
         //track flashlight action for smart polling optimization
         flashlightLastAction = Date.now();
         //get current flashlight status first
-        const statusResponse = await fetch('/api/flashlight/status', {
+        const statusResponse = await fetch(`/api/flashlight/${currentCamera}/status`, {
           headers: { 'Accept': 'application/json' }
         });
         const statusData = await statusResponse.json();
@@ -2835,7 +2838,7 @@
         }
         
         //turn on flashlight
-        const response = await fetch('/api/flashlight/on', {
+        const response = await fetch(`/api/flashlight/${currentCamera}/on`, {
           method: 'PUT',
           headers: { 'Accept': 'application/json' }
         });

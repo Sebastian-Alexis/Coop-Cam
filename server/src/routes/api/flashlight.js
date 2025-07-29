@@ -7,13 +7,16 @@ import express from 'express';
 export const createFlashlightRouter = ({ flashlightController }) => {
   const router = express.Router();
 
-  //route mappings to controller methods
-  router.get('/status', flashlightController.getStatus);
-  router.put('/on', flashlightController.turnOn);
-  router.put('/off', flashlightController.turnOff);
+  //legacy routes for backward compatibility (no sourceId)
+  router.get('/status', flashlightController.legacyGetStatus);
+  router.put('/on', flashlightController.legacyToggle);  //legacy turnOn maps to toggle
+  router.put('/off', flashlightController.legacyTurnOff); //legacy turnOff
+  router.put('/', flashlightController.legacyToggle);   //legacy toggle
 
-  //legacy route for backwards compatibility
-  router.put('/', flashlightController.legacyToggle);
+  //camera-specific routes with sourceId parameter
+  router.get('/:sourceId/status', flashlightController.getStatus);
+  router.put('/:sourceId/on', flashlightController.turnOn);
+  router.put('/:sourceId/off', flashlightController.turnOff);
 
   return router;
 };

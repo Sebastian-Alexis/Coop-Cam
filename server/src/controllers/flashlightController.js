@@ -8,7 +8,8 @@ export const createFlashlightController = ({ flashlightState }) => {
 
   //get flashlight status with mobile caching headers
   const getStatus = (req, res) => {
-    const status = flashlightState.getStatus();
+    const { sourceId } = req.params;
+    const status = flashlightState.getStatus(sourceId);
     
     //mobile-specific caching
     if (req.isMobile) {
@@ -23,7 +24,8 @@ export const createFlashlightController = ({ flashlightState }) => {
 
   //turn flashlight on
   const turnOn = async (req, res) => {
-    const result = await flashlightState.turnOn();
+    const { sourceId } = req.params;
+    const result = await flashlightState.turnOn(sourceId);
     
     if (result.success) {
       res.json(result);
@@ -34,7 +36,8 @@ export const createFlashlightController = ({ flashlightState }) => {
 
   //turn flashlight off
   const turnOff = async (req, res) => {
-    const result = await flashlightState.turnOff();
+    const { sourceId } = req.params;
+    const result = await flashlightState.turnOff(sourceId);
     
     if (result.success) {
       res.json(result);
@@ -45,7 +48,36 @@ export const createFlashlightController = ({ flashlightState }) => {
 
   //legacy endpoint - for backwards compatibility
   const legacyToggle = async (req, res) => {
+    //legacy behavior uses default camera (no sourceId)
     const result = await flashlightState.turnOn();
+    
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(500).json(result);
+    }
+  };
+
+  //legacy status endpoint - for backwards compatibility
+  const legacyGetStatus = (req, res) => {
+    //legacy behavior uses default camera (no sourceId)
+    const status = flashlightState.getStatus();
+    
+    //mobile-specific caching
+    if (req.isMobile) {
+      res.set({
+        'Cache-Control': 'private, max-age=5', //short cache for mobile
+        'X-Mobile-Optimized': 'true'
+      });
+    }
+    
+    res.json(status);
+  };
+
+  //legacy turn off endpoint - for backwards compatibility
+  const legacyTurnOff = async (req, res) => {
+    //legacy behavior uses default camera (no sourceId)
+    const result = await flashlightState.turnOff();
     
     if (result.success) {
       res.json(result);
@@ -58,6 +90,8 @@ export const createFlashlightController = ({ flashlightState }) => {
     getStatus,
     turnOn,
     turnOff,
-    legacyToggle
+    legacyToggle,
+    legacyGetStatus,
+    legacyTurnOff
   };
 };
