@@ -122,6 +122,60 @@
   border-bottom: none; /* Remove bottom border since it connects to retro bar */
 }
 
+/* Backpressure loading overlay */
+.backpressure-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.backpressure-overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.backpressure-content {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.backpressure-spinner {
+  width: 3rem;
+  height: 3rem;
+  border: 3px solid rgba(139, 69, 19, 0.3);
+  border-top: 3px solid var(--retro-border);
+  border-radius: 50%;
+  animation: backpressure-spin 1s linear infinite;
+}
+
+@keyframes backpressure-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.backpressure-text {
+  color: var(--retro-text);
+  font-size: 0.875rem;
+  text-align: center;
+  font-weight: 500;
+}
+
 /* Fullscreen button styles */
 .fullscreen-btn {
   position: absolute;

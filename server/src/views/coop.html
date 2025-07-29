@@ -93,16 +93,27 @@
                 <p class="text-sm text-base-content/60">Connecting to stream...</p>
               </div>
             </div>
+            <!-- Backpressure Loading Overlay -->
+            <div id="backpressureOverlay" class="backpressure-overlay">
+              <div class="backpressure-content">
+                <div class="backpressure-spinner"></div>
+                <div class="backpressure-text">Buffering stream...</div>
+              </div>
+            </div>
             <!-- Stream Image -->
             <img 
               id="stream"
               src="/api/stream/coop1" 
               alt="Live Coop Stream" 
               class="w-full h-auto object-contain"
-              onerror="handleStreamError()"
-              onload="handleStreamLoad()"
               style="display: none;"
             />
+            <!-- Canvas for frame preservation -->
+            <canvas 
+              id="streamCanvas"
+              class="w-full h-auto object-contain"
+              style="display: none;"
+            ></canvas>
             <!-- Fullscreen button -->
             <button 
               id="fullscreenBtn"

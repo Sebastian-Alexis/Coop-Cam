@@ -76,8 +76,18 @@
     let streamSustainedSuccessTimeout = null; //timer for sustained stream success
     let streamStallTimeout = null;
     
+    //frame preservation variables
+    let frameCapture = {
+      canvas: null,
+      context: null,
+      captureTimer: null,
+      hasLastFrame: false,
+      isUsingCanvas: false
+    };
+    
     //flashlight variables
     let flashlightCountdownInterval = null;
+    let flashlightLastAction = 0; //timestamp of last flashlight action
     
     //password modal variables  
     let passwordCountdownInterval = null;
@@ -174,6 +184,102 @@
       }
     };
     
+    //frame preservation system for keeping last frame during stream issues
+    const FramePreservation = {
+      //initialize canvas for frame capture
+      init() {
+        frameCapture.canvas = document.getElementById('streamCanvas');
+        if (frameCapture.canvas) {
+          frameCapture.context = frameCapture.canvas.getContext('2d');
+          console.log('[FramePreservation] Canvas initialized for frame capture');
+        }
+      },
+      
+      //capture current frame from stream image to canvas
+      captureFrame() {
+        const streamImg = document.getElementById('stream');
+        if (!streamImg || !frameCapture.canvas || !frameCapture.context) return false;
+        
+        //only capture if stream is visible and loaded
+        if (streamImg.style.display === 'none' || !streamImg.complete || streamImg.naturalWidth === 0) {
+          return false;
+        }
+        
+        try {
+          //set canvas size to match image
+          frameCapture.canvas.width = streamImg.naturalWidth;
+          frameCapture.canvas.height = streamImg.naturalHeight;
+          
+          //draw current frame to canvas
+          frameCapture.context.drawImage(streamImg, 0, 0);
+          frameCapture.hasLastFrame = true;
+          
+          console.log('[FramePreservation] Frame captured to canvas');
+          return true;
+        } catch (error) {
+          console.error('[FramePreservation] Failed to capture frame:', error);
+          return false;
+        }
+      },
+      
+      //start periodic frame capture when stream is working
+      startCapture() {
+        this.stopCapture(); //clear any existing timer
+        
+        frameCapture.captureTimer = TimerManager.setInterval(() => {
+          this.captureFrame();
+        }, 2000, 'frameCapture'); //capture every 2 seconds
+        
+        console.log('[FramePreservation] Started periodic frame capture');
+      },
+      
+      //stop frame capture
+      stopCapture() {
+        if (frameCapture.captureTimer) {
+          TimerManager.clearInterval(frameCapture.captureTimer);
+          frameCapture.captureTimer = null;
+          console.log('[FramePreservation] Stopped frame capture');
+        }
+      },
+      
+      //show preserved frame when stream fails
+      showPreservedFrame() {
+        const streamImg = document.getElementById('stream');
+        
+        if (!frameCapture.hasLastFrame || !frameCapture.canvas) {
+          console.log('[FramePreservation] No preserved frame available');
+          return false;
+        }
+        
+        //hide stream image and show canvas
+        if (streamImg) streamImg.style.display = 'none';
+        frameCapture.canvas.style.display = 'block';
+        frameCapture.isUsingCanvas = true;
+        
+        console.log('[FramePreservation] Showing preserved frame on canvas');
+        return true;
+      },
+      
+      //restore stream image when connection recovered
+      restoreStream() {
+        const streamImg = document.getElementById('stream');
+        
+        //show stream image and hide canvas
+        if (streamImg) streamImg.style.display = 'block';
+        if (frameCapture.canvas) frameCapture.canvas.style.display = 'none';
+        frameCapture.isUsingCanvas = false;
+        
+        console.log('[FramePreservation] Restored stream image');
+      },
+      
+      //cleanup frame preservation
+      cleanup() {
+        this.stopCapture();
+        frameCapture.hasLastFrame = false;
+        frameCapture.isUsingCanvas = false;
+      }
+    };
+    
     //FAB toggle function
     function toggleFAB() {
       const fabMenu = document.getElementById('fabMenu');
@@ -201,6 +307,12 @@
     function switchCamera(cameraId) {
       if (currentCamera === cameraId) return; //already on this camera
       
+      //stop frame capture for old camera
+      FramePreservation.stopCapture();
+      
+      //show loading state during camera switch
+      showSwitchingLoader(cameraId);
+      
       currentCamera = cameraId;
       
       //update stream source
@@ -219,6 +331,9 @@
         TimerManager.clearTimeout(streamSustainedSuccessTimeout);
         streamSustainedSuccessTimeout = null;
       }
+      
+      //clear old frame data - new camera will have different content
+      frameCapture.hasLastFrame = false;
     }
     
     //update active button styling
@@ -475,28 +590,36 @@
     //debug stream status
     function handleStreamError() {
       console.error('Stream error detected');
+      const hadFrames = streamLoadTime !== null; //check if we had frames before
       streamLoadTime = null;
-      // Trigger the onerror handler to start reconnection
-      const streamImg = document.getElementById('stream');
-      if (streamImg && streamImg.onerror) {
-        streamImg.onerror();
+      
+      //if we had frames before, keep last frame visible during reconnection
+      if (hadFrames) {
+        showUnifiedLoader('Connection lost...', false, true);
+      } else {
+        //initial connection failure - no last frame to show
+        showUnifiedLoader('Connection lost...');
       }
     }
     
     function handleStreamLoad() {
-      if (!streamLoadTime) {
+      const isFirstLoad = !streamLoadTime;
+      
+      if (isFirstLoad) {
         streamLoadTime = Date.now();
         console.log('Stream started loading');
-        
-        //hide loader and show stream on first frame
-        const loader = document.getElementById('streamLoader');
-        const stream = document.getElementById('stream');
-        const container = document.getElementById('videoContainer');
-        
-        if (loader) loader.style.display = 'none';
-        if (stream) stream.style.display = 'block';
-        if (container) container.classList.remove('stream-loading');
+        //start frame capture now that stream is working
+        FramePreservation.startCapture();
       }
+      
+      //ALWAYS hide loading overlays on every successful frame load (fixes buffering overlay persistence)
+      hideAllLoaders();
+      const stream = document.getElementById('stream');
+      const container = document.getElementById('videoContainer');
+      
+      if (stream) stream.style.display = 'block';
+      if (container) container.classList.remove('stream-loading');
+      
       frameCount++;
       if (frameCount % 30 === 0) {
         console.log(`Stream active - ${frameCount} frames loaded`);
@@ -518,8 +641,133 @@
       }
       streamStallTimeout = TimerManager.setTimeout(() => {
         console.log('[Stream] Stall detected - no frames for 3 seconds, reconnecting...');
-        handleStreamError();
+        //show buffering overlay while keeping last frame during stall
+        showUnifiedLoader('Stream stalled, reconnecting...', false, true);
+        //trigger reconnection by forcing onerror
+        const streamImg = document.getElementById('stream');
+        if (streamImg && streamImg.onerror) {
+          streamImg.onerror();
+        }
       }, STALL_TIMEOUT_MS, 'streamStall');
+    }
+
+    //unified loading system - consolidates streamLoader and backpressureOverlay
+    function showUnifiedLoader(message = 'Connecting to stream...', isBackpressure = false, keepLastFrame = false) {
+      const loader = document.getElementById('streamLoader');
+      const backpressureOverlay = document.getElementById('backpressureOverlay');
+      const stream = document.getElementById('stream');
+      const container = document.getElementById('videoContainer');
+      
+      //hide backpressure overlay always
+      if (backpressureOverlay) {
+        backpressureOverlay.classList.remove('show');
+      }
+      
+      if (isBackpressure || keepLastFrame) {
+        //for backpressure or buffering: show overlay but keep last frame visible
+        if (backpressureOverlay) {
+          //update overlay message
+          const overlayText = backpressureOverlay.querySelector('.backpressure-text');
+          if (overlayText) {
+            DOMUtils.setText(overlayText, message);
+          }
+          backpressureOverlay.classList.add('show');
+          console.log('[Stream] Showing buffering overlay while keeping last frame:', message);
+        }
+        
+        //try to show preserved frame if stream is broken, otherwise keep current stream
+        if (keepLastFrame && frameCapture.hasLastFrame) {
+          //if stream is working, keep it; if broken, show preserved frame
+          const streamWorking = stream && stream.complete && stream.naturalWidth > 0;
+          if (!streamWorking) {
+            FramePreservation.showPreservedFrame();
+          } else {
+            //stream is working, keep it visible
+            if (stream) stream.style.display = 'block';
+            if (frameCapture.canvas) frameCapture.canvas.style.display = 'none';
+          }
+        } else {
+          //no preserved frame available, keep current stream visible
+          if (stream) stream.style.display = 'block';
+        }
+        
+        if (container) container.classList.remove('stream-loading');
+        //hide the full loader since we're using overlay
+        if (loader) loader.style.display = 'none';
+      } else {
+        //for initial connection or genuine failure: show full loader and hide stream
+        if (stream) stream.style.display = 'none';
+        if (container) container.classList.add('stream-loading');
+        
+        if (loader) {
+          const loaderContainer = DOMUtils.createElement('div', null, 'flex flex-col items-center gap-4');
+          const spinner = DOMUtils.createElement('span', null, 'loading loading-spinner loading-lg');
+          const messageEl = DOMUtils.createElement('p', message, 'text-sm text-base-content/60');
+          
+          loaderContainer.appendChild(spinner);
+          loaderContainer.appendChild(messageEl);
+          DOMUtils.replaceContent(loader, [loaderContainer]);
+          loader.style.display = 'flex';
+          console.log('[Stream] Showing unified loader:', message);
+        }
+      }
+    }
+    
+    function hideAllLoaders() {
+      const loader = document.getElementById('streamLoader');
+      const backpressureOverlay = document.getElementById('backpressureOverlay');
+      
+      if (loader) loader.style.display = 'none';
+      if (backpressureOverlay) {
+        const wasShowing = backpressureOverlay.classList.contains('show');
+        backpressureOverlay.classList.remove('show');
+        if (wasShowing) {
+          console.log('[Stream] Cleared buffering overlay');
+        }
+      }
+      
+      //restore stream image if we were using canvas
+      if (frameCapture.isUsingCanvas) {
+        FramePreservation.restoreStream();
+      }
+      
+      console.log('[Stream] Hiding all loading overlays');
+    }
+    
+    function showSwitchingLoader(newCameraId) {
+      const cameraNames = { 'coop1': 'Coop Enclosure', 'coop2': 'Inside Coop' };
+      const cameraName = cameraNames[newCameraId] || newCameraId;
+      //keep last frame during camera switch to avoid jarring transition
+      showUnifiedLoader(`Switching to ${cameraName}...`, false, true);
+    }
+    
+    //legacy functions for backward compatibility
+    function showBackpressureOverlay() {
+      showUnifiedLoader('Buffering stream...', true, true);
+    }
+    
+    function hideBackpressureOverlay() {
+      const overlay = document.getElementById('backpressureOverlay');
+      if (overlay) {
+        overlay.classList.remove('show');
+      }
+    }
+
+    //detect if error is likely backpressure vs genuine connection failure
+    function isLikelyBackpressure() {
+      //improved heuristics for backpressure detection:
+      //1. more lenient retry threshold (< 15 retries suggests temporary issues)
+      //2. longer recent frames window (had been working in last 5 minutes)
+      //3. not in sustained error state
+      //4. consider frame count as health indicator
+      
+      const hasRecentFrames = streamLoadTime && (Date.now() - streamLoadTime) < 300000; //had frames in last 5 minutes (was 60s)
+      const reasonableRetries = streamRetryCount < 15; //more lenient (was 5)
+      const notMaxedOut = streamRetryCount < MAX_RETRY_COUNT;
+      const hadSomeFrames = frameCount > 10; //had received some frames indicating working connection
+      
+      //if we've had recent frames OR reasonable retry count, likely temporary issue
+      return (hasRecentFrames || hadSomeFrames) && reasonableRetries && notMaxedOut;
     }
 
     //auto-reconnect stream on error
@@ -539,29 +787,21 @@
           TimerManager.clearTimeout(streamReconnectTimeout);
         }
         
-        //show loader again
-        const loader = document.getElementById('streamLoader');
-        const stream = document.getElementById('stream');
-        const container = document.getElementById('videoContainer');
-        
-        if (stream) stream.style.display = 'none';
-        if (container) container.classList.add('stream-loading');
+        //determine if this is likely backpressure or a genuine connection failure
+        const likelyBackpressure = isLikelyBackpressure();
         
         if (streamRetryCount < MAX_RETRY_COUNT) {
           streamRetryCount++;
           const delay = RETRY_DELAY * Math.min(streamRetryCount, 5); // Cap at 10 seconds
           
-          if (loader) {
-            loader.style.display = 'flex';
-            
-            //create safe loader elements
-            const loaderContainer = DOMUtils.createElement('div', null, 'flex flex-col items-center gap-4');
-            const spinner = DOMUtils.createElement('span', null, 'loading loading-spinner loading-lg');
-            const message = DOMUtils.createElement('p', `Reconnecting... (${streamRetryCount}/${MAX_RETRY_COUNT})`, 'text-sm text-base-content/60');
-            
-            loaderContainer.appendChild(spinner);
-            loaderContainer.appendChild(message);
-            DOMUtils.replaceContent(loader, [loaderContainer]);
+          if (likelyBackpressure) {
+            //for backpressure: show overlay but keep stream visible with last frame
+            console.log('[Stream] Detected likely backpressure - showing buffering overlay with last frame');
+            showUnifiedLoader('Buffering stream...', true, true);
+          } else {
+            //for genuine connection issues: show full loader
+            console.log('[Stream] Detected connection failure - showing full loader');
+            showUnifiedLoader(`Reconnecting... (${streamRetryCount}/${MAX_RETRY_COUNT})`);
           }
           
           streamReconnectTimeout = TimerManager.setTimeout(() => {
@@ -668,6 +908,16 @@
     //check flashlight status from server
     async function checkFlashlightStatus() {
       try {
+        //smart polling: reduce checks when no recent flashlight actions (performance optimization)
+        const timeSinceAction = Date.now() - flashlightLastAction;
+        if (timeSinceAction > 10 * 60 * 1000) {
+          //only check every 4th cycle when no recent activity (reduce API calls by 75%)
+          const checkCycle = Math.floor(Date.now() / intervals.flashlight);
+          if (checkCycle % 4 !== 0) {
+            return; // Skip this check - no recent flashlight activity
+          }
+        }
+        
         //use request queue on mobile
         const response = isMobile 
           ? await requestQueue.fetch('/api/flashlight/status', {}, { priority: 0 })
@@ -798,6 +1048,9 @@
 
     //toggle flashlight
     async function toggleFlashlight() {
+      //track flashlight action for smart polling optimization
+      flashlightLastAction = Date.now();
+      
       //flashlight UI elements no longer exist (Inside Coop is now static text)
       //preserve functionality but skip UI updates since button is removed
       console.log('toggleFlashlight called but UI elements no longer exist');
@@ -2380,14 +2633,14 @@
       }
     }
     
-    //adjust intervals based on device type
+    //heavily optimized intervals to reduce server load and fix extreme lag
     const intervals = {
-      stats: isMobile ? 15000 : 5000,        //15s mobile, 5s desktop
-      weather: 5 * 60 * 1000,                //5 minutes both
-      flashlight: isMobile ? 10000 : 5000,   //10s mobile, 5s desktop
-      recordings: isMobile ? 60000 : 30000,  //60s mobile, 30s desktop
-      pauseStatus: isMobile ? 10000 : 5000,  //10s mobile, 5s desktop
-      reactions: isMobile ? 30000 : 10000    //30s mobile, 10s desktop
+      stats: isMobile ? 45000 : 30000,       //45s mobile, 30s desktop (was 15s/5s - reduced by 6x/5x)
+      weather: 15 * 60 * 1000,               //15 minutes both (was 5 minutes - reduced by 3x)
+      flashlight: isMobile ? 60000 : 45000,  //1min mobile, 45s desktop (was 10s/5s - reduced by 6x/9x)
+      recordings: isMobile ? 180000 : 90000, //3min mobile, 1.5min desktop (was 60s/30s - reduced by 3x)
+      pauseStatus: isMobile ? 60000 : 45000, //1min mobile, 45s desktop (was 10s/5s - reduced by 6x/9x)
+      reactions: isMobile ? 90000 : 45000    //1.5min mobile, 45s desktop (was 30s/10s - reduced by 3x/4.5x)
     };
     
     //interval references for pause/resume
@@ -2555,11 +2808,19 @@
       
       //initialize notification manager
       NotificationManager.init();
+      
+      //initialize frame preservation system
+      FramePreservation.init();
+      
+      //setup stream error handling and reconnection
+      setupStreamReconnection();
     });
     
     //global function for flashlight overlay button
     window.toggleFlashlightOverlay = async function() {
       try {
+        //track flashlight action for smart polling optimization
+        flashlightLastAction = Date.now();
         //get current flashlight status first
         const statusResponse = await fetch('/api/flashlight/status', {
           headers: { 'Accept': 'application/json' }
